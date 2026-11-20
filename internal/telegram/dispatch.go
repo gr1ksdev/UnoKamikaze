@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
 	"github.com/mymmrac/telego"
 )
 

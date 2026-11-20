@@ -3,7 +3,7 @@ package app
 import (
 	"context"
 	"errors"
-	"github.com/malbs/UnoGoBot/internal/config"
+	"github.com/gr1ksdev/UnoKamikaze/internal/config"
 	"reflect"
 	"testing"
 	"time"

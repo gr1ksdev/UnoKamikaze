@@ -1,4 +1,4 @@
-# UnoBotGO V2 — engine (Milestone 1)
+# UnoKamikaze V2 — engine (Milestone 1)
 
 ## V3 — modo Caseiro único (2026-11-16)
 
@@ -82,7 +82,7 @@ executando o V1, com seu token e PostgreSQL. A engine pode ser utilizada sem amb
 ## API e responsabilidades
 
 ```go
-import "github.com/malbs/UnoGoBot/internal/uno"
+import "github.com/gr1ksdev/UnoKamikaze/internal/uno"
 
 g, err := uno.NewGame("round-1", uno.BotRules())
 // Tratar err antes de continuar.

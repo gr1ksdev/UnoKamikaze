@@ -1,4 +1,4 @@
-module github.com/malbs/UnoGoBot
+module github.com/gr1ksdev/UnoKamikaze
 
 go 1.26.3
 

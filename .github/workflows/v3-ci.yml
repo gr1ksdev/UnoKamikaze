@@ -16,18 +16,18 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_USER: unobot
-          POSTGRES_PASSWORD: unobot
-          POSTGRES_DB: unobot_test
+          POSTGRES_USER: unokamikaze
+          POSTGRES_PASSWORD: unokamikaze
+          POSTGRES_DB: unokamikaze_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U unobot -d unobot_test"
+          --health-cmd "pg_isready -U unokamikaze -d unokamikaze_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      TEST_DATABASE_URL: postgres://unobot:unobot@localhost:5432/unobot_test?sslmode=disable
+      TEST_DATABASE_URL: postgres://unokamikaze:unokamikaze@localhost:5432/unokamikaze_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -51,5 +51,5 @@ jobs:
           file: Dockerfile.v2
           platforms: linux/amd64,linux/arm64
           push: false
-          cache-from: type=gha,scope=v3-image
-          cache-to: type=gha,mode=max,scope=v3-image
+          cache-from: type=gha,scope=v3-ci-image
+          cache-to: type=gha,mode=max,scope=v3-ci-image

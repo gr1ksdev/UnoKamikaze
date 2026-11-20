@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
 )
 
 func TestPollingUsesLongPollingTimeout(t *testing.T) {

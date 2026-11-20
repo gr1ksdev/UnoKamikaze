@@ -2,8 +2,8 @@ package postgres
 
 import (
 	"context"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/malbs/UnoGoBot/internal/groups"
 )
 
 type executor interface {

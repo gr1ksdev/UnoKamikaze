@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/game"
-	"github.com/malbs/UnoGoBot/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
 	"github.com/mymmrac/telego"
 )
 
@@ -61,7 +61,7 @@ func TestCommandListsFollowLanguage(t *testing.T) {
 func TestEnglishGroupAcceptsOnlyEnglishCommands(t *testing.T) {
 	api := newMockBotAPI()
 	svc, _ := game.NewService()
-	h := NewCommandHandler(api, svc, NewRenderer(NewUserCache(100)), NewTokenStore(100, 10, time.Now, nil), "unobot", nil)
+	h := NewCommandHandler(api, svc, NewRenderer(NewUserCache(100)), NewTokenStore(100, 10, time.Now, nil), "unokamikaze", nil)
 	repo := newMockGroupRepo()
 	cfg, _ := repo.GetOrCreateGroupConfig(t.Context(), -55)
 	cfg.CommandLanguage = groups.CommandsEN
@@ -70,19 +70,19 @@ func TestEnglishGroupAcceptsOnlyEnglishCommands(t *testing.T) {
 	h.languages.repo = repo
 
 	chat := telego.Chat{ID: -55, Type: "supergroup"}
-	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/new@unobot"})
+	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/new@unokamikaze"})
 	summary, err := svc.FindChatGame(t.Context(), -55)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 2, FirstName: "PT"}, Text: "/entrar@unobot"})
+	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 2, FirstName: "PT"}, Text: "/entrar@unokamikaze"})
 	view, _ := svc.PublicView(t.Context(), summary.GameID)
 	if len(view.Players) != 0 {
 		t.Fatal("Portuguese command was accepted in an English group")
 	}
 
-	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 2, FirstName: "EN"}, Text: "/join@unobot"})
+	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 2, FirstName: "EN"}, Text: "/join@unokamikaze"})
 	view, _ = svc.PublicView(t.Context(), summary.GameID)
 	if len(view.Players) != 1 || view.Players[0].ID != 2 {
 		t.Fatal("English command was refused in an English group")

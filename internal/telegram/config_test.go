@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/game"
-	"github.com/malbs/UnoGoBot/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
 	"github.com/mymmrac/telego"
 )
 
@@ -188,7 +188,7 @@ func TestConfig_DefaultsAndNeverBlocked(t *testing.T) {
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: 10, FirstName: "Player1"},
-		Text: "/novo@unobot",
+		Text: "/novo@unokamikaze",
 	})
 
 	summary, err := h.svc.FindChatGame(ctx, game.ChatID(chatID))
@@ -213,7 +213,7 @@ func TestConfig_NovoArgumentsAreIgnored(t *testing.T) {
 	ctx := t.Context()
 	chatID := int64(-1003)
 
-	for _, text := range []string{"/novo@unobot", "/novo@unobot classico", "/novo@unobot caseiro"} {
+	for _, text := range []string{"/novo@unokamikaze", "/novo@unokamikaze classico", "/novo@unokamikaze caseiro"} {
 		h.cmdHandler.HandleMessage(ctx, &telego.Message{
 			Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 			From: &telego.User{ID: 10, FirstName: "Player1"},
@@ -234,7 +234,7 @@ func TestConfig_NovoArgumentsAreIgnored(t *testing.T) {
 		h.cmdHandler.HandleMessage(ctx, &telego.Message{
 			Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 			From: &telego.User{ID: 10, FirstName: "Player1"},
-			Text: "/cancelar@unobot",
+			Text: "/cancelar@unokamikaze",
 		})
 	}
 }
@@ -250,7 +250,7 @@ func TestConfig_ActiveGamePreservesSnapshotOnConfigChange(t *testing.T) {
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: 10, FirstName: "Admin"},
-		Text: "/novo@unobot",
+		Text: "/novo@unokamikaze",
 	})
 	summary, _ := h.svc.FindChatGame(ctx, game.ChatID(chatID))
 
@@ -290,7 +290,7 @@ func TestConfig_AdminCanOpenAndModify(t *testing.T) {
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: adminID, FirstName: "Creator"},
-		Text: "/config@unobot",
+		Text: "/config@unokamikaze",
 	})
 
 	if len(h.api.SentMessages) == 0 {
@@ -331,7 +331,7 @@ func TestConfig_NonAdminCannotModify(t *testing.T) {
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: regularUserID, FirstName: "Bob"},
-		Text: "/config@unobot",
+		Text: "/config@unokamikaze",
 	})
 
 	lastMsg := h.api.SentMessages[len(h.api.SentMessages)-1]
@@ -374,7 +374,7 @@ func TestConfig_InstallerStillMemberCanConfigure(t *testing.T) {
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: installerID, FirstName: "Installer"},
-		Text: "/config@unobot",
+		Text: "/config@unokamikaze",
 	})
 
 	lastMsg := h.api.SentMessages[len(h.api.SentMessages)-1]
@@ -411,7 +411,7 @@ func TestConfig_InstallerLeftGroupCannotConfigure(t *testing.T) {
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: installerID, FirstName: "ExMember"},
-		Text: "/config@unobot",
+		Text: "/config@unokamikaze",
 	})
 
 	lastMsg := h.api.SentMessages[len(h.api.SentMessages)-1]
@@ -437,7 +437,7 @@ func TestConfig_UnknownInstallerAdminsStillWork(t *testing.T) {
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: adminID, FirstName: "Admin"},
-		Text: "/config@unobot",
+		Text: "/config@unokamikaze",
 	})
 
 	lastMsg := h.api.SentMessages[len(h.api.SentMessages)-1]
@@ -524,7 +524,7 @@ func TestConfig_RankingChangeKeepsHouseMode(t *testing.T) {
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: adminID, FirstName: "Creator"},
-		Text: "/novo@unobot",
+		Text: "/novo@unokamikaze",
 	})
 	summary, err := h.svc.FindChatGame(ctx, game.ChatID(chatID))
 	if err != nil {
@@ -577,7 +577,7 @@ func TestConfig_MyChatMember_RealInstallation(t *testing.T) {
 		t.Fatal("expected welcome message sent")
 	}
 	welcome := h.api.SentMessages[len(h.api.SentMessages)-1]
-	if !strings.Contains(welcome.Text, "Obrigado por adicionar o UnoBotGO") {
+	if !strings.Contains(welcome.Text, "Obrigado por adicionar o UnoKamikaze") {
 		t.Fatalf("unexpected welcome text: %s", welcome.Text)
 	}
 	welcomeMarkup, ok := welcome.ReplyMarkup.(*telego.InlineKeyboardMarkup)
@@ -673,7 +673,7 @@ func TestConfig_PersistedSurvivesRestart(t *testing.T) {
 	newBot.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: 10, FirstName: "Player"},
-		Text: "/novo@unobot",
+		Text: "/novo@unokamikaze",
 	})
 
 	summary, err := newSvc.FindChatGame(ctx, game.ChatID(chatID))
@@ -713,7 +713,7 @@ func TestConfig_KnownUserObservedAtInteractionPoints(t *testing.T) {
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: 200, FirstName: "AdminConfig", Username: "admin200"},
-		Text: "/config@unobot",
+		Text: "/config@unokamikaze",
 	})
 	key2 := fmt.Sprintf("%d:%d", chatID, 200)
 	if u, ok := h.userRepo.users[key2]; !ok || u.DisplayName != "AdminConfig" {
@@ -819,7 +819,7 @@ func TestConfig_FirstConfigInGroupWithoutExistingConfig_ObservesUser(t *testing.
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: adminID, FirstName: "AdminNovo", Username: "admin_novo"},
-		Text: "/config@unobot",
+		Text: "/config@unokamikaze",
 	})
 
 	// 1. Group config deve existir com os defaults (Caseiro + Updated)
@@ -875,7 +875,7 @@ func TestConfig_FirstConfigInGroupWithoutExistingConfig_NonAdmin_ObservesUserAnd
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: regularUserID, FirstName: "ComumNovo", Username: "comum_novo"},
-		Text: "/config@unobot",
+		Text: "/config@unokamikaze",
 	})
 
 	// 1. Group config deve ter sido criada com defaults
@@ -977,7 +977,7 @@ func TestConfig_DynamicCallbackUpdates(t *testing.T) {
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: adminID, FirstName: "Admin"},
-		Text: "/config@unobot",
+		Text: "/config@unokamikaze",
 	})
 
 	if len(h.api.SentMessages) == 0 {

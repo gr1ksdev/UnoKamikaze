@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/game"
-	"github.com/malbs/UnoGoBot/internal/groups"
-	"github.com/malbs/UnoGoBot/internal/uno"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 	"github.com/mymmrac/telego"
 )
 
@@ -18,10 +18,10 @@ func TestRoomLockCommands(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := NewRenderer(nil)
-	h := NewCommandHandler(api, svc, r, NewTokenStore(100, 10, time.Now, nil), "unobot", nil)
+	h := NewCommandHandler(api, svc, r, NewTokenStore(100, 10, time.Now, nil), "unokamikaze", nil)
 	send := func(id int64, command string, want string) {
 		t.Helper()
-		h.HandleMessage(t.Context(), &telego.Message{Chat: telego.Chat{ID: -10, Type: "supergroup"}, From: &telego.User{ID: id, FirstName: "Player"}, Text: command + "@unobot"})
+		h.HandleMessage(t.Context(), &telego.Message{Chat: telego.Chat{ID: -10, Type: "supergroup"}, From: &telego.User{ID: id, FirstName: "Player"}, Text: command + "@unokamikaze"})
 		if !strings.Contains(api.LastSentMessage(), want) {
 			t.Fatalf("%s: %s, want %s", command, api.LastSentMessage(), want)
 		}
@@ -53,7 +53,7 @@ func TestRoomLockCommands(t *testing.T) {
 	send(99, "/novo", "Partida de UNO")
 	send(4, "/entrar", "1/10")
 	for _, text := range []string{"/trancar", "Impede novos jogadores de entrar", "/destrancar", "Permite novas entradas"} {
-		if !strings.Contains(r.RenderHelp("unobot", groups.CommandsPT), text) {
+		if !strings.Contains(r.RenderHelp("unokamikaze", groups.CommandsPT), text) {
 			t.Fatal("help missing", text)
 		}
 	}

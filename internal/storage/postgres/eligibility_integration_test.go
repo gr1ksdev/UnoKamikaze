@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/ranking"
 	"github.com/jackc/pgx/v5"
-	"github.com/malbs/UnoGoBot/internal/groups"
-	"github.com/malbs/UnoGoBot/internal/ranking"
 )
 
 func eligibleResult(t *testing.T, system groups.RankingSystem, n, abandoned int, reason string) ranking.Result {

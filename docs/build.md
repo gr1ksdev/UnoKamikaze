@@ -10,12 +10,12 @@ A v3 não tem frontend: o binário é Go puro, sem Node no build nem na imagem.
 ## Build
 
 ```bash
-go build -trimpath -o bin/unobotgo ./cmd/bot
+go build -trimpath -o bin/unokamikaze ./cmd/bot
 ```
 
 O executável é standalone e inclui as migrations SQL versionadas.
 
-Ao iniciar `./bin/unobotgo`, o processo conecta PostgreSQL e aplica as
+Ao iniciar `./bin/unokamikaze`, o processo conecta PostgreSQL e aplica as
 pendências antes do bot. O ledger e os checksums são verificados, com advisory
 lock entre instâncias e timeout interno de 2 minutos. Migrations já aplicadas
 não devem ser editadas; falhas impedem startup. Não há etapa manual ou segundo
@@ -34,15 +34,15 @@ A integração com PostgreSQL real exige uma base de testes e a tag de
 integração:
 
 ```bash
-TEST_DATABASE_URL='postgres://postgres:senha@localhost:5432/unobot_test?sslmode=disable' \
+TEST_DATABASE_URL='postgres://postgres:senha@localhost:5432/unokamikaze_test?sslmode=disable' \
   go test -race -tags integration ./internal/storage/postgres/...
 ```
 
 ## Container local
 
 ```bash
-docker build -f Dockerfile.v2 -t unobotgo:v3 .
-docker run --rm -p 8080:8080 --env-file .env unobotgo:v3
+docker build -f Dockerfile.v2 -t unokamikaze:v3 .
+docker run --rm -p 8080:8080 --env-file .env unokamikaze:v3
 ```
 
 O build do container é multi-stage: o estágio Go compila o binário standalone e

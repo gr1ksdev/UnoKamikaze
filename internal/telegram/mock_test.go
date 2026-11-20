@@ -45,8 +45,8 @@ func newMockBotAPI() *mockBotAPI {
 	return &mockBotAPI{
 		MeUser: &telego.User{
 			ID:                    12345,
-			FirstName:             "UnoBot",
-			Username:              "unobot",
+			FirstName:             "UnoKamikaze",
+			Username:              "unokamikaze",
 			SupportsInlineQueries: true,
 		},
 		WebhookInfo: &telego.WebhookInfo{

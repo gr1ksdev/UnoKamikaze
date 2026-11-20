@@ -15,7 +15,7 @@ import (
 )
 
 func installationEnv() map[string]string {
-	return map[string]string{"TOKEN": "123456789:abcdefghij", "DATABASE_URL": "postgres://localhost/unobot_test"}
+	return map[string]string{"TOKEN": "123456789:abcdefghij", "DATABASE_URL": "postgres://localhost/unokamikaze_test"}
 }
 func loadInstallationEnv(env map[string]string) (*Config, error) {
 	return LoadFromLookup(func(k string) (string, bool) { v, ok := env[k]; return v, ok })
@@ -189,11 +189,11 @@ func TestWebhookSecretDerivation(t *testing.T) {
 		t.Fatal("master key exposed")
 	}
 	mac := hmac.New(sha256.New, cfg.SecretKey)
-	mac.Write([]byte("unobotgo/v2/telegram-webhook-secret/v1"))
+	mac.Write([]byte("unokamikaze/v2/telegram-webhook-secret/v1"))
 	if !bytes.Equal(decoded, mac.Sum(nil)) {
 		t.Fatal("protocol context changed")
 	}
-	for _, other := range []string{"unobotgo/reference/v1", "unobotgo/key/v1", "unobotgo/telegram/webhook-secret/v2"} {
+	for _, other := range []string{"unokamikaze/reference/v1", "unokamikaze/key/v1", "unokamikaze/telegram/webhook-secret/v2"} {
 		mac := hmac.New(sha256.New, cfg.SecretKey)
 		mac.Write([]byte(other))
 		if bytes.Equal(decoded, mac.Sum(nil)) {

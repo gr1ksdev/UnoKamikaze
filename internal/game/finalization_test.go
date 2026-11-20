@@ -3,8 +3,8 @@ package game
 import (
 	"context"
 	"errors"
-	"github.com/malbs/UnoGoBot/internal/ranking"
-	"github.com/malbs/UnoGoBot/internal/uno"
+	"github.com/gr1ksdev/UnoKamikaze/internal/ranking"
+	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 	"sync"
 	"testing"
 	"time"

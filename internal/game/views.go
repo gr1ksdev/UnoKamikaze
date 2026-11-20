@@ -4,8 +4,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/groups"
-	"github.com/malbs/UnoGoBot/internal/uno"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 )
 
 type ChatID int64

@@ -6,9 +6,9 @@ import (
 	"slices"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/groups"
-	"github.com/malbs/UnoGoBot/internal/ranking"
-	"github.com/malbs/UnoGoBot/internal/uno"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/ranking"
+	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 )
 
 // TurnPolicy drives the skip-with-penalty timer. Initial is the full waiting

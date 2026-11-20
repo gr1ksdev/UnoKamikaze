@@ -5,7 +5,7 @@ package game
 import (
 	"context"
 
-	"github.com/malbs/UnoGoBot/internal/uno"
+	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 )
 
 // GiveCard is available only in explicit debugcards builds. The caller must be

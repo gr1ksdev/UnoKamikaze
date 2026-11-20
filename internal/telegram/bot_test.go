@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/game"
-	"github.com/malbs/UnoGoBot/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
 	"github.com/mymmrac/telego"
 )
 
@@ -96,7 +96,7 @@ func TestBot_RunAndShutdown(t *testing.T) {
 		Message: &telego.Message{
 			Chat: telego.Chat{ID: -10055, Type: "supergroup", Title: "UNO Group"},
 			From: &telego.User{ID: 1, FirstName: "Alice"},
-			Text: "/novo@unobot",
+			Text: "/novo@unokamikaze",
 		},
 	}
 
@@ -146,7 +146,7 @@ func TestBot_ResetUsesRecoveryLaneAndAllowsNewGame(t *testing.T) {
 	}
 	reset := telego.Update{UpdateID: 900, Message: &telego.Message{
 		Chat: telego.Chat{ID: int64(chatID), Type: "supergroup"},
-		From: &telego.User{ID: ownerID}, Text: "/reset@unobot",
+		From: &telego.User{ID: ownerID}, Text: "/reset@unokamikaze",
 	}}
 	if !bot.submitUpdate(t.Context(), reset) {
 		t.Fatal("reset was rejected while normal queue was saturated")
@@ -175,7 +175,7 @@ func TestBot_ResetUsesRecoveryLaneAndAllowsNewGame(t *testing.T) {
 
 	create := telego.Update{UpdateID: 901, Message: &telego.Message{
 		Chat: telego.Chat{ID: int64(chatID), Type: "supergroup", Title: "Recovery"},
-		From: &telego.User{ID: ownerID}, Text: "/novo@unobot",
+		From: &telego.User{ID: ownerID}, Text: "/novo@unokamikaze",
 	}}
 	if !bot.submitUpdate(t.Context(), create) {
 		t.Fatal("new command was not admitted after reset")

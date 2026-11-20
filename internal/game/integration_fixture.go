@@ -3,7 +3,7 @@
 package game
 
 import (
-	"github.com/malbs/UnoGoBot/internal/uno"
+	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 	"math/rand"
 	"sync"
 )

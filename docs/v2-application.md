@@ -1,4 +1,4 @@
-# UnoBotGO V2 — Milestone 2
+# UnoKamikaze V2 — Milestone 2
 
 ## Atualização — controle de entradas (2026-09-26, somente dev)
 
@@ -273,7 +273,7 @@ go build ./...
 go test ./...
 go test -race ./...
 go vet ./...
-go test -coverprofile=/tmp/unobotgo-v2-coverage.out ./internal/game ./internal/uno
+go test -coverprofile=/tmp/unokamikaze-v2-coverage.out ./internal/game ./internal/uno
 git diff --check
 ```
 

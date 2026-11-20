@@ -8,11 +8,11 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/config"
-	"github.com/malbs/UnoGoBot/internal/game"
-	"github.com/malbs/UnoGoBot/internal/ranking"
-	"github.com/malbs/UnoGoBot/internal/storage/postgres"
-	"github.com/malbs/UnoGoBot/internal/telegram"
+	"github.com/gr1ksdev/UnoKamikaze/internal/config"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/ranking"
+	"github.com/gr1ksdev/UnoKamikaze/internal/storage/postgres"
+	"github.com/gr1ksdev/UnoKamikaze/internal/telegram"
 )
 
 type Migrator interface {

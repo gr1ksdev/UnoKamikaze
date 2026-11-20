@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/ranking"
 	"github.com/jackc/pgx/v5"
-	"github.com/malbs/UnoGoBot/internal/groups"
-	"github.com/malbs/UnoGoBot/internal/ranking"
 )
 
 var _ ranking.PlayerStatsRepository = (*Store)(nil)

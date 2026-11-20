@@ -1,4 +1,4 @@
-# UnoBotGO V2 — Telegram Adapter (Milestone 3)
+# UnoKamikaze V2 — Telegram Adapter (Milestone 3)
 
 ## Resultado e ranking acumulado (2026-09-29, dev; homologação pendente)
 
@@ -233,13 +233,13 @@ Testes automatizados validam payloads, estado, concorrência e ambos os ingresso
 com API mockada; não substituem esta homologação visual real.
 
 
-Este documento descreve a arquitetura, o fluxo de execução, os detalhes de segurança e o roteiro de homologação do adapter Telegram do UnoBotGO V2.
+Este documento descreve a arquitetura, o fluxo de execução, os detalhes de segurança e o roteiro de homologação do adapter Telegram do UnoKamikaze V2.
 
 ---
 
 ## 1. Visão Geral e Arquitetura
 
-O UnoBotGO V2 é executado via `./cmd/bot` e consome diretamente a camada de aplicação desacoplada (`internal/game.Service`).
+O UnoKamikaze V2 é executado via `./cmd/bot` e consome diretamente a camada de aplicação desacoplada (`internal/game.Service`).
 
 ```text
                                +----------------------------------+
@@ -444,7 +444,7 @@ Quando `cache_time` é 0, o encoder padrão omite o campo, fazendo o Telegram ad
 
 O transporte padrão é o long polling (`TELEGRAM_MODE=polling`). Para produção atrás de HTTPS e reverse proxy, o webhook é o transporte recomendado: ele elimina o ciclo de `getUpdates`, não sofre `429` de long polling e permite que o Telegram reenvie updates quando o endpoint responde `5xx`/`503`.
 
-Para receber updates por webhook, configure `TELEGRAM_MODE=webhook` e uma `WEBHOOK_URL` pública HTTPS com caminho dedicado, por exemplo `https://bot.exemplo.com/telegram`. O servidor compartilhado atende em `WEB_ADDR` (padrão `:8080`); a terminação TLS fica no reverse proxy ou plataforma externa. A URL pública não pode ser deduzida do endereço local. O segredo é derivado internamente com HMAC-SHA256, master `MINIAPP_SECRET` decodificado e contexto exclusivo `unobotgo/v2/telegram-webhook-secret/v1`. A saída em Base64URL sem padding tem 43 caracteres compatíveis com `secret_token`; não é a chave AES original. O header `X-Telegram-Bot-Api-Secret-Token` é validado em tempo constante e o segredo nunca é registrado.
+Para receber updates por webhook, configure `TELEGRAM_MODE=webhook` e uma `WEBHOOK_URL` pública HTTPS com caminho dedicado, por exemplo `https://bot.exemplo.com/telegram`. O servidor compartilhado atende em `WEB_ADDR` (padrão `:8080`); a terminação TLS fica no reverse proxy ou plataforma externa. A URL pública não pode ser deduzida do endereço local. O segredo é derivado internamente com HMAC-SHA256, master `MINIAPP_SECRET` decodificado e contexto exclusivo `unokamikaze/v2/telegram-webhook-secret/v1`. A saída em Base64URL sem padding tem 43 caracteres compatíveis com `secret_token`; não é a chave AES original. O header `X-Telegram-Bot-Api-Secret-Token` é validado em tempo constante e o segredo nunca é registrado.
 
 No modo webhook o bot aplica `setWebhook` em todo startup, inclusive quando a URL não mudou, para garantir que alterações do segredo sejam efetivadas. Falhas transitórias são repetidas até três vezes com backoff curto. `drop_pending_updates` é sempre `false` (política interna fixa). Ao voltar para polling, um webhook existente é removido com `drop_pending_updates=false`, preservando updates pendentes. O shutdown normal não remove o webhook remoto.
 

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
 )
 
 type readStub struct {

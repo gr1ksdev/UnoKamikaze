@@ -12,7 +12,7 @@ import (
 )
 
 func minimalEnv() map[string]string {
-	return map[string]string{"TOKEN": "123456789:ABCdefGHIjklMNOpqrSTUvwxYZ_12345", "DATABASE_URL": "postgres://localhost/unobot_test"}
+	return map[string]string{"TOKEN": "123456789:ABCdefGHIjklMNOpqrSTUvwxYZ_12345", "DATABASE_URL": "postgres://localhost/unokamikaze_test"}
 }
 func fromMap(env map[string]string) (*Config, error) {
 	return LoadFromLookup(func(k string) (string, bool) { v, ok := env[k]; return v, ok })

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/uno"
+	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 )
 
 func TestExpiredTurnAdvance(t *testing.T) {

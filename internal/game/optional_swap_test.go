@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/uno"
+	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 )
 
 func swapPosition(t *testing.T, s *Service, last bool) PublicGameView {

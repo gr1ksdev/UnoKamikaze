@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/groups"
-	"github.com/malbs/UnoGoBot/internal/ranking"
-	"github.com/malbs/UnoGoBot/internal/uno"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/ranking"
+	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 )
 
 // The lock order is entry.mu -> indexMu. Lookup releases indexMu before waiting

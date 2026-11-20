@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
 )
 
 // GroupRanking is a bounded prefix of the group's cumulative standings.

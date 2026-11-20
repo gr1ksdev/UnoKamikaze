@@ -6,14 +6,14 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"github.com/malbs/UnoGoBot/internal/config"
+	"github.com/gr1ksdev/UnoKamikaze/internal/config"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
 	"github.com/mymmrac/telego"
 )
 

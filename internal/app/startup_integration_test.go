@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gr1ksdev/UnoKamikaze/internal/storage/postgres"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/malbs/UnoGoBot/internal/storage/postgres"
 )
 
 // Match the storage suite's isolated-schema approach; never use application data.

@@ -7,13 +7,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/malbs/UnoGoBot/internal/app"
-	"github.com/malbs/UnoGoBot/internal/config"
+	"github.com/gr1ksdev/UnoKamikaze/internal/app"
+	"github.com/gr1ksdev/UnoKamikaze/internal/config"
 )
 
 func main() {
 	if err := run(); err != nil {
-		slog.Error("UnoBotGO stopped", "error", err)
+		slog.Error("UnoKamikaze stopped", "error", err)
 		os.Exit(1)
 	}
 }

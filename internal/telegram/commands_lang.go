@@ -5,8 +5,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/malbs/UnoGoBot/internal/game"
-	"github.com/malbs/UnoGoBot/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
 	"github.com/mymmrac/telego"
 	"github.com/mymmrac/telego/telegoutil"
 )
@@ -157,7 +157,7 @@ func groupCommandNames(lang groups.CommandLanguage) []string {
 
 func privateCommandList(lang groups.CommandLanguage) []telego.BotCommand {
 	return []telego.BotCommand{
-		{Command: "start", Description: "Conhecer o UnoBotGO"},
+		{Command: "start", Description: "Conhecer o UnoKamikaze"},
 		{Command: "help", Description: "Ver comandos e instruções"},
 		{Command: "ranking", Description: "Ver seus rankings mensais"},
 		{Command: "stats", Description: "Ver suas estatísticas"},

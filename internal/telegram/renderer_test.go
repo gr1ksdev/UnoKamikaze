@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/malbs/UnoGoBot/internal/game"
-	"github.com/malbs/UnoGoBot/internal/groups"
-	"github.com/malbs/UnoGoBot/internal/uno"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 )
 
 func TestUserCache_HtmlEscapeAndEviction(t *testing.T) {
@@ -68,7 +68,7 @@ func TestCardRepr(t *testing.T) {
 func TestRenderer_WelcomeAndHelp(t *testing.T) {
 	renderer := NewRenderer(nil)
 	welcome := renderer.RenderWelcome()
-	if !strings.Contains(welcome, "Bem-vindo ao UnoBotGO") || !strings.Contains(welcome, "/ajuda") {
+	if !strings.Contains(welcome, "Bem-vindo ao UnoKamikaze") || !strings.Contains(welcome, "/ajuda") {
 		t.Fatalf("unexpected welcome: %s", welcome)
 	}
 	if strings.Contains(welcome, "V2") || strings.Contains(welcome, "Golang") || strings.Contains(welcome, "desenvolvida em Go") {
@@ -128,8 +128,8 @@ func TestRenderer_RenderLobbyAndState(t *testing.T) {
 	}
 
 	stateText := renderer.RenderPublicState(playView)
-	if strings.Contains(stateText, "UnoBotGO") {
-		t.Errorf("expected no UnoBotGO header in state text: %s", stateText)
+	if strings.Contains(stateText, "UnoKamikaze") {
+		t.Errorf("expected no UnoKamikaze header in state text: %s", stateText)
 	}
 	if strings.Contains(stateText, "cartas") {
 		t.Errorf("expected no cartas count in state text: %s", stateText)

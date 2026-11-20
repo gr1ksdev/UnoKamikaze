@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/game"
-	"github.com/malbs/UnoGoBot/internal/groups"
-	"github.com/malbs/UnoGoBot/internal/ranking"
-	"github.com/malbs/UnoGoBot/internal/uno"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/ranking"
+	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 	"github.com/mymmrac/telego"
 )
 
@@ -23,14 +23,14 @@ func administrationFixtureWithPolicy(t *testing.T, policy game.TurnPolicy) (*Com
 	t.Helper()
 	api := newMockBotAPI()
 	svc, _ := game.NewService(game.WithTurnPolicy(policy))
-	h := NewCommandHandler(api, svc, NewRenderer(NewUserCache(100)), NewTokenStore(100, 10, time.Now, nil), "unobot", nil)
+	h := NewCommandHandler(api, svc, NewRenderer(NewUserCache(100)), NewTokenStore(100, 10, time.Now, nil), "unokamikaze", nil)
 
 	chat := telego.Chat{ID: -700, Type: "supergroup", Title: "Sala Admin"}
-	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/novo@unobot"})
+	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/novo@unokamikaze"})
 	for _, id := range []int64{1, 2, 3} {
-		h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: id, FirstName: "Jogador"}, Text: "/entrar@unobot"})
+		h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: id, FirstName: "Jogador"}, Text: "/entrar@unokamikaze"})
 	}
-	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/iniciar@unobot"})
+	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/iniciar@unokamikaze"})
 
 	summary, err := svc.FindChatGame(t.Context(), -700)
 	if err != nil {
@@ -49,7 +49,7 @@ func TestPularAdvancesTheTurnForTheCurrentPlayer(t *testing.T) {
 	h.HandleMessage(t.Context(), &telego.Message{
 		Chat: telego.Chat{ID: -700, Type: "supergroup"},
 		From: &telego.User{ID: int64(before), FirstName: "Da vez"},
-		Text: "/pular@unobot",
+		Text: "/pular@unokamikaze",
 	})
 	after, err := svc.PublicView(t.Context(), view.GameID)
 	if err != nil {
@@ -72,7 +72,7 @@ func TestPularIsRefusedBeforeTheDeadline(t *testing.T) {
 	h.HandleMessage(t.Context(), &telego.Message{
 		Chat: telego.Chat{ID: -700, Type: "supergroup"},
 		From: &telego.User{ID: 3, FirstName: "Comum"},
-		Text: "/pular@unobot",
+		Text: "/pular@unokamikaze",
 	})
 	after, err := svc.PublicView(t.Context(), view.GameID)
 	if err != nil {
@@ -93,7 +93,7 @@ func TestPularIsAllowedForAnyParticipantAfterTheDeadline(t *testing.T) {
 	h.HandleMessage(t.Context(), &telego.Message{
 		Chat: telego.Chat{ID: -700, Type: "supergroup"},
 		From: &telego.User{ID: 3, FirstName: "Comum"},
-		Text: "/pular@unobot",
+		Text: "/pular@unokamikaze",
 	})
 	after, err := svc.PublicView(t.Context(), view.GameID)
 	if err != nil {
@@ -113,7 +113,7 @@ func TestExpulsarRemovesTheRepliedPlayer(t *testing.T) {
 	h.HandleMessage(t.Context(), &telego.Message{
 		Chat: telego.Chat{ID: -700, Type: "supergroup"},
 		From: &telego.User{ID: 1, FirstName: "Owner"},
-		Text: "/expulsar@unobot",
+		Text: "/expulsar@unokamikaze",
 		ReplyToMessage: &telego.Message{
 			MessageID: 7,
 			From:      &telego.User{ID: 3, FirstName: "Alvo"},
@@ -142,7 +142,7 @@ func TestExpulsarRequiresATarget(t *testing.T) {
 	h.HandleMessage(t.Context(), &telego.Message{
 		Chat: telego.Chat{ID: -700, Type: "supergroup"},
 		From: &telego.User{ID: 1, FirstName: "Owner"},
-		Text: "/expulsar@unobot",
+		Text: "/expulsar@unokamikaze",
 	})
 	after, err := svc.PublicView(t.Context(), view.GameID)
 	if err != nil {
@@ -160,7 +160,7 @@ func TestExpulsarRequiresATarget(t *testing.T) {
 func TestStatsCommandReportsThePlayerHistory(t *testing.T) {
 	api := newMockBotAPI()
 	svc, _ := game.NewService()
-	h := NewCommandHandler(api, svc, NewRenderer(NewUserCache(100)), NewTokenStore(100, 10, time.Now, nil), "unobot", nil)
+	h := NewCommandHandler(api, svc, NewRenderer(NewUserCache(100)), NewTokenStore(100, 10, time.Now, nil), "unokamikaze", nil)
 	h.rankingService = &ranking.Service{Repository: &mockPrivateRankingRepo{
 		onPlayerStats: func(_ context.Context, chatID, userID int64, _ time.Time) (ranking.PlayerStats, error) {
 			if chatID != -700 || userID != 42 {
@@ -172,7 +172,7 @@ func TestStatsCommandReportsThePlayerHistory(t *testing.T) {
 	h.HandleMessage(t.Context(), &telego.Message{
 		Chat: telego.Chat{ID: -700, Type: "supergroup", Title: "Sala Stats"},
 		From: &telego.User{ID: 42, FirstName: "Freddy"},
-		Text: "/stats@unobot",
+		Text: "/stats@unokamikaze",
 	})
 	last := api.SentMessages[len(api.SentMessages)-1]
 	for _, want := range []string{"Sala Stats", "Partidas pontuadas: 7", "Vitórias: 2", "Melhor colocação: 1º", "Colocação média: 2.14", "Posição no ranking: 3 de 9"} {
@@ -187,13 +187,13 @@ func TestLobbyButtonStartsTheGame(t *testing.T) {
 	svc, _ := game.NewService()
 	b := New(api, svc, nil, nil, time.Minute, nil)
 	defer b.dispatcher.Stop(time.Second)
-	b.cmdHandler.botUsername = "unobot"
+	b.cmdHandler.botUsername = "unokamikaze"
 	h := b.cmdHandler
 	chat := telego.Chat{ID: -77, Type: "supergroup", Title: "Lobby Button"}
 
-	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/novo@unobot"})
-	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/entrar@unobot"})
-	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 2, FirstName: "Other"}, Text: "/entrar@unobot"})
+	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/novo@unokamikaze"})
+	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/entrar@unokamikaze"})
+	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 2, FirstName: "Other"}, Text: "/entrar@unokamikaze"})
 
 	summary, err := svc.FindChatGame(t.Context(), -77)
 	if err != nil {

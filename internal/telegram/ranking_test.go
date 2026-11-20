@@ -9,10 +9,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/malbs/UnoGoBot/internal/game"
-	"github.com/malbs/UnoGoBot/internal/groups"
-	"github.com/malbs/UnoGoBot/internal/ranking"
-	"github.com/malbs/UnoGoBot/internal/uno"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/ranking"
+	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 	"github.com/mymmrac/telego"
 )
 
@@ -148,7 +148,7 @@ func TestRankingCommandSharedRendererIsolationAndNoAdmin(t *testing.T) {
 		return ranking.GroupRanking{System: groups.Legacy, MonthName: "Outubro"}, nil
 	})})
 	for _, id := range []int64{-1, -2, -3} {
-		b.cmdHandler.HandleMessage(t.Context(), &telego.Message{Chat: telego.Chat{ID: id, Type: "supergroup"}, From: &telego.User{ID: 999, FirstName: "Membro"}, Text: "/ranking@unobot"})
+		b.cmdHandler.HandleMessage(t.Context(), &telego.Message{Chat: telego.Chat{ID: id, Type: "supergroup"}, From: &telego.User{ID: 999, FirstName: "Membro"}, Text: "/ranking@unokamikaze"})
 		text := api.LastSentMessage()
 		switch id {
 		case -1:
@@ -165,7 +165,7 @@ func TestRankingCommandSharedRendererIsolationAndNoAdmin(t *testing.T) {
 			}
 		}
 	}
-	b.cmdHandler.HandleMessage(t.Context(), &telego.Message{Chat: telego.Chat{ID: 999, Type: "private"}, From: &telego.User{ID: 999}, Text: "/ranking@unobot"})
+	b.cmdHandler.HandleMessage(t.Context(), &telego.Message{Chat: telego.Chat{ID: 999, Type: "private"}, From: &telego.User{ID: 999}, Text: "/ranking@unokamikaze"})
 	if calls != 3 || api.LastSentMessage() != "🏆 Seus rankings\n\nVocê ainda não possui partidas pontuadas neste mês." {
 		t.Fatalf("expected empty private monthly ranking, got %q", api.LastSentMessage())
 	}
@@ -211,7 +211,7 @@ func TestPostCommitRankingReadsUpdatedHistoryAndMatchesCommand(t *testing.T) {
 		t.Fatal(api.SentMessages)
 	}
 	automatic := api.SentMessages[1].Text
-	b.cmdHandler.HandleMessage(t.Context(), &telego.Message{Chat: telego.Chat{ID: 42, Type: "group"}, From: &telego.User{ID: 999}, Text: "/ranking@unobot"})
+	b.cmdHandler.HandleMessage(t.Context(), &telego.Message{Chat: telego.Chat{ID: 42, Type: "group"}, From: &telego.User{ID: 999}, Text: "/ranking@unokamikaze"})
 	if api.LastSentMessage() != automatic || reads != 2 {
 		t.Fatal("different command renderer")
 	}
@@ -500,7 +500,7 @@ func TestPrivateRankingCommand_ScopesToSenderAndNoButtons(t *testing.T) {
 	b.cmdHandler.HandleMessage(t.Context(), &telego.Message{
 		Chat: telego.Chat{ID: 777, Type: "private"},
 		From: &telego.User{ID: 777, FirstName: "Freddy"},
-		Text: "/ranking@unobot",
+		Text: "/ranking@unokamikaze",
 	})
 
 	if queriedUserID != 777 {

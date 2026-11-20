@@ -12,7 +12,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
 )
 
 type Units int64 // 100 units = one point; never a binary float.

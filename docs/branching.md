@@ -1,37 +1,42 @@
-# Branches públicas e desenvolvimento
+# Branches públicas e publicação
 
-`dev` contém o histórico completo de desenvolvimento do v2. A branch `main` é
-uma publicação limpa do v2 e tem histórico próprio, sem artefatos de agentes ou
-arquivos exclusivos do V1.
+Repositório: `git@github.com:gr1ksdev/UnoKamikaze.git`
+(GitHub: `gr1ksdev/UnoKamikaze`). Módulo Go: `github.com/gr1ksdev/UnoKamikaze`.
+
+A linha de produto é `v3`: bot de Telegram puro, sem Mini App, API REST ou
+WebSocket. É a **branch padrão** deste repositório e a única mantida aqui.
 
 ## Branches
 
 | Branch | Conteúdo |
 |---|---|
-| `main` | Publicação estável do v2, com Mini App. |
-| `dev` | Linha de desenvolvimento do v2. |
-| `v3` | Bot de Telegram puro: sem Mini App, sem API REST, sem WebSocket. |
+| `v3` | Produto atual: bot de Telegram puro, modo Caseiro único. Branch padrão. |
 
-A `v3` nasce de `main` mais o delta real de código do `dev` (a substituição de
-lobby vazio no `/novo`). Não recebe os artefatos internos — `.agent/`,
-`.opencode/`, `.reports/` — nem o legado do V1.
+As branches `main` e `dev` pertencem ao repositório anterior
+(`gr1ksdev/UnoBotGO`) e preservam o histórico do v2, incluindo a Mini App. A
+migração da `v3` preservou o histórico completo, de modo que os commits do v2
+continuam na ancestralidade da `v3`, mas este repositório não mantém branches
+`main` ou `dev`.
 
 ## Fluxo
 
-1. Desenvolva e faça commits na branch da linha correspondente (`dev` para o
-   v2, `v3` para o novo produto).
-2. O CI da branch executa testes, race detector, vet, build e validação Docker.
-3. Gere uma árvore pública a partir do estado aprovado, mantendo somente
-   arquivos do produto e documentação técnica humana.
-4. Atualize `main` com essa árvore pública e deixe o CI validar e publicar a
-   imagem no GHCR.
+1. Desenvolva e faça commits na `v3`.
+2. O CI da branch (`v3-ci.yml`) executa testes, race detector, variantes
+   `debugcards` e `integration`, vet, build e validação Docker, com PostgreSQL
+   isolado.
+3. A publicação da imagem é feita por `v3-container.yml` em push na `v3`,
+   gerando `ghcr.io/gr1ksdev/unokamikaze:latest` e `:sha-<commit>`.
+4. Cada tag é um manifesto OCI com variantes `linux/amd64` e `linux/arm64`.
 
-Não faça merge direto de `dev` em `main`: os históricos são independentes e a
-árvore pública não deve receber artefatos internos. A publicação usa as tags
-`latest` e `sha-<commit>` em `ghcr.io/gr1ksdev/unobotgo`. Cada tag é um manifesto
-OCI com variantes `linux/amd64` e `linux/arm64`.
+Não faça merge das linhas do v2 na `v3`: a árvore do produto não deve receber
+artefatos da Mini App nem o legado do V1.
 
-O workflow `public-tree` rejeita na `main` os caminhos privados e do V1:
-`.agent/`, `.opencode/`, `.reports/`, `AGENTS.md`, `codemaps/`,
-`docker-compose.yml`, `Dockerfile`, `docs/v2-audit.md`, `main.go` e os demais
-arquivos do legado.
+## Remote antigo
+
+Localmente, o remote `upstream` continua apontando para
+`git@github.com:gr1ksdev/UnoBotGO.git` como referência do estado anterior. O
+remote `origin` é este repositório.
+
+O workflow `public-tree.yml` era a guarda de publicação da árvore limpa do v2
+(disparava em `main`). Aqui ele permanece inativo, pois não existe branch
+`main` neste repositório.

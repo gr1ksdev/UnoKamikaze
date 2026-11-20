@@ -1,4 +1,4 @@
-# UnoBotGO — Estado do projeto
+# UnoKamikaze — Estado do projeto
 
 Revisão: **2026-11-16**, branch `v3`.
 

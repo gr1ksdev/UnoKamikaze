@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
 )
 
 // PlayerStats summarises one player's history. A zero ChatID aggregates the

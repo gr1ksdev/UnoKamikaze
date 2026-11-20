@@ -7,10 +7,10 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/malbs/UnoGoBot/internal/game"
-	"github.com/malbs/UnoGoBot/internal/groups"
-	"github.com/malbs/UnoGoBot/internal/ranking"
-	"github.com/malbs/UnoGoBot/internal/uno"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/ranking"
+	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 )
 
 type UserCache struct {
@@ -418,14 +418,14 @@ func (r *Renderer) RenderActionConfirmation(actorID uno.PlayerID, action uno.Act
 }
 
 func (r *Renderer) RenderWelcome() string {
-	return "👋 <b>Bem-vindo ao UnoBotGO!</b>\n\n" +
+	return "👋 <b>Bem-vindo ao UnoKamikaze!</b>\n\n" +
 		"Jogue UNO com seus amigos diretamente nos grupos do Telegram. Crie partidas, escolha o modo de jogo e use sua mão pelo menu privado.\n\n" +
 		"Use /ajuda para conhecer todos os comandos."
 }
 
 func (r *Renderer) RenderHelp(botUsername string, lang groups.CommandLanguage) string {
 	var sb strings.Builder
-	sb.WriteString("📖 <b>UnoBotGO — ")
+	sb.WriteString("📖 <b>UnoKamikaze — ")
 	if lang == groups.CommandsEN {
 		sb.WriteString("Commands")
 	} else {
@@ -546,7 +546,7 @@ func (r *Renderer) RenderGroupWelcome(config groups.Config) string {
 	if config.RankingSystem == groups.Updated {
 		rankLabel = "Colocação"
 	}
-	return fmt.Sprintf("👋 <b>Olá! Obrigado por adicionar o UnoBotGO ao grupo!</b>\n\n"+
+	return fmt.Sprintf("👋 <b>Olá! Obrigado por adicionar o UnoKamikaze ao grupo!</b>\n\n"+
 		"O bot já está pronto para jogar. As partidas usam o modo <b>Caseiro</b> e o ranking <b>%s</b>.\n\n"+
 		"Use /novo para iniciar uma partida ou clique no botão abaixo para personalizar as opções do grupo.", rankLabel)
 }

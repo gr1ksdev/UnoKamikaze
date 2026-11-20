@@ -8,7 +8,7 @@ import (
 
 // This versioned protocol context separates the webhook authenticator from
 // any future use of SECRET_KEY.
-const webhookSecretContext = "unobotgo/v2/telegram-webhook-secret/v1"
+const webhookSecretContext = "unokamikaze/v2/telegram-webhook-secret/v1"
 
 // DeriveWebhookSecret returns a 43-character [A-Za-z0-9_-] authenticator,
 // compatible with Telegram secret_token. The master key is never sent to Telegram.

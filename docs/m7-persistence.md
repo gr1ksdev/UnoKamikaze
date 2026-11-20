@@ -203,7 +203,7 @@ Novas variáveis:
 ```sh
 # Configure o .env conforme .env.example
 go run ./cmd/bot
-# Em produção: ./bin/unobotgo
+# Em produção: ./bin/unokamikaze
 ```
 
 Startup tem prazo de 10s para conexão e 2m (política interna) para migrations/verificação antes de qualquer serviço funcional. DB offline, timeout, migration inválida ou schema incompatível encerram com erro e código não zero, sem HTTP/readiness/bot/workers parciais. Erros identificam estágio/migration e preservam a causa, sem registrar URL/senha ou detalhes de linhas.
@@ -211,7 +211,7 @@ Fechamento tem prazo de operação 10s e cleanup com prazo próprio 3s. Nenhuma
 jogada/compra/turno/stack/challenge/join/leave precisa consultar PostgreSQL durante
 a partida; apenas a transição terminal chama persistência. Polling segue recomendado.
 
-Docker V2 multiarch inicia apenas `/unobotgo`; migrations estão embutidas e são aplicadas pelo mesmo startup, sem wrapper, serviço ou binário adicional. Não foram adicionados Redis/Kubernetes.
+Docker V2 multiarch inicia apenas `/unokamikaze`; migrations estão embutidas e são aplicadas pelo mesmo startup, sem wrapper, serviço ou binário adicional. Não foram adicionados Redis/Kubernetes.
 Migrations usadas pela versão nova exigem runtime compatível; rollback operacional
 não deve apagar dados nem executar down migrations sem autorização/backup.
 

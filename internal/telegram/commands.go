@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/game"
-	"github.com/malbs/UnoGoBot/internal/groups"
-	"github.com/malbs/UnoGoBot/internal/ranking"
-	"github.com/malbs/UnoGoBot/internal/uno"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/ranking"
+	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 	"github.com/mymmrac/telego"
 )
 
@@ -264,7 +264,7 @@ func (h *CommandHandler) HandleMessage(ctx context.Context, msg *telego.Message)
 	// group. It is protocol traffic, not a user command, so it is universal.
 	if cmdName == "start" && len(fields) > 1 && fields[1] == "true" {
 		lang := h.commandLanguage(ctx, chatID)
-		h.reply(ctx, int64(msg.Chat.ID), fmt.Sprintf("👋 <b>UnoBotGO adicionado!</b>\n\nUse %s para criar uma partida ou %s para conhecer os comandos.",
+		h.reply(ctx, int64(msg.Chat.ID), fmt.Sprintf("👋 <b>UnoKamikaze adicionado!</b>\n\nUse %s para criar uma partida ou %s para conhecer os comandos.",
 			commandName(cmdNew, lang), commandName(cmdHelp, lang)), nil)
 		return
 	}

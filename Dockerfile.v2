@@ -11,13 +11,13 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-w -s" -o /build/unobotgo ./cmd/bot
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-w -s" -o /build/unokamikaze ./cmd/bot
 
 # Stage 2: Minimal non-root distroless runtime
 FROM gcr.io/distroless/static-debian12:nonroot
 
 EXPOSE 8080
 
-COPY --from=builder /build/unobotgo /unobotgo
+COPY --from=builder /build/unokamikaze /unokamikaze
 
-ENTRYPOINT ["/unobotgo"]
+ENTRYPOINT ["/unokamikaze"]

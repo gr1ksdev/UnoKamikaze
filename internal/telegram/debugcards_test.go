@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/game"
-	"github.com/malbs/UnoGoBot/internal/groups"
-	"github.com/malbs/UnoGoBot/internal/uno"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 	"github.com/mymmrac/telego"
 )
 
@@ -40,7 +40,7 @@ func TestDebugCommandDeliveryAndRejections(t *testing.T) {
 	api := newMockBotAPI()
 	b := newTestBot(api, svc, nil, nil, time.Minute, nil)
 	defer b.dispatcher.Stop(time.Second)
-	b.cmdHandler.botUsername = "unobot"
+	b.cmdHandler.botUsername = "unokamikaze"
 	api.ChatMembers[11] = &telego.ChatMemberAdministrator{Status: telego.MemberStatusAdministrator}
 
 	v, err := svc.Create(t.Context(), game.Actor{PlayerID: 11, ChatID: -100}, game.CreateRequest{Rules: uno.CaseiroRules()})
@@ -59,7 +59,7 @@ func TestDebugCommandDeliveryAndRejections(t *testing.T) {
 	}
 
 	// A regular member cannot discover the debug command.
-	msg := &telego.Message{Chat: telego.Chat{ID: -100, Type: "supergroup"}, From: &telego.User{ID: 22}, Text: "/dar@unobot +4"}
+	msg := &telego.Message{Chat: telego.Chat{ID: -100, Type: "supergroup"}, From: &telego.User{ID: 22}, Text: "/dar@unokamikaze +4"}
 	b.cmdHandler.HandleMessage(t.Context(), msg)
 	if len(api.SentMessages) != 1 || !strings.Contains(api.LastSentMessage(), "exige administrador") {
 		t.Fatalf("unauthorized caller: %+v", api.SentMessages)
@@ -80,7 +80,7 @@ func TestDebugCommandDeliveryAndRejections(t *testing.T) {
 		success := false
 		for _, color := range []string{"vermelho", "azul", "verde", "amarelo"} {
 			for n := 0; n <= 9; n++ {
-				msg.Text = "/dar@unobot " + color + " " + string(rune('0'+n))
+				msg.Text = "/dar@unokamikaze " + color + " " + string(rune('0'+n))
 				b.cmdHandler.HandleMessage(t.Context(), msg)
 				if strings.Contains(api.LastSentMessage(), "recebeu") {
 					success = true

@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/malbs/UnoGoBot/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
 )
 
 const groupColumns = `chat_id,ranking_system,installed_by_user_id,config_revision,created_at,updated_at`

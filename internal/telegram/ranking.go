@@ -3,14 +3,14 @@ package telegram
 import (
 	"context"
 	"fmt"
-	"github.com/malbs/UnoGoBot/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
 	"html"
 	"strconv"
 	"strings"
 	"time"
 	"unicode/utf16"
 
-	"github.com/malbs/UnoGoBot/internal/ranking"
+	"github.com/gr1ksdev/UnoKamikaze/internal/ranking"
 	"github.com/mymmrac/telego"
 )
 

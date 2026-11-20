@@ -1,7 +1,7 @@
 package telegram
 
 import (
-	"github.com/malbs/UnoGoBot/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
 	"log/slog"
 	"time"
 )
@@ -9,7 +9,7 @@ import (
 // Handler-level fixtures have a known identity without running Telegram startup.
 func newTestBot(api BotAPI, service *game.Service, tokens *TokenStore, renderer *Renderer, ttl time.Duration, logger *slog.Logger) *Bot {
 	b := New(api, service, tokens, renderer, ttl, logger)
-	b.username = "unobot"
-	b.cmdHandler.botUsername = "unobot"
+	b.username = "unokamikaze"
+	b.cmdHandler.botUsername = "unokamikaze"
 	return b
 }

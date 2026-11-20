@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/config"
-	"github.com/malbs/UnoGoBot/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/config"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
 	"github.com/mymmrac/telego"
 )
 

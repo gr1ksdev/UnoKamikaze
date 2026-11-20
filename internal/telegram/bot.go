@@ -14,11 +14,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/config"
-	"github.com/malbs/UnoGoBot/internal/game"
-	"github.com/malbs/UnoGoBot/internal/groups"
-	"github.com/malbs/UnoGoBot/internal/ranking"
-	"github.com/malbs/UnoGoBot/internal/uno"
+	"github.com/gr1ksdev/UnoKamikaze/internal/config"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/ranking"
+	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 	"github.com/mymmrac/telego"
 )
 
@@ -168,7 +168,7 @@ func (b *Bot) registerCommands(ctx context.Context) error {
 	// higher-priority per-chat override installed when the admin changes it.
 	registrations := []telego.SetMyCommandsParams{
 		{
-			Commands: []telego.BotCommand{{Command: "start", Description: "Conhecer o UnoBotGO"}},
+			Commands: []telego.BotCommand{{Command: "start", Description: "Conhecer o UnoKamikaze"}},
 			Scope:    &telego.BotCommandScopeDefault{Type: telego.ScopeTypeDefault},
 		},
 		{

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/malbs/UnoGoBot/internal/game"
-	"github.com/malbs/UnoGoBot/internal/ranking"
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
+	"github.com/gr1ksdev/UnoKamikaze/internal/ranking"
 	"github.com/mymmrac/telego"
 )
 

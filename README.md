@@ -1,4 +1,4 @@
-# UnoBotGO
+# UnoKamikaze
 
 Bot de UNO em Go para o Telegram, em modo inline, com stickers para jogar as
 cartas.
@@ -36,8 +36,8 @@ go run ./cmd/bot
 Ou via Docker:
 
 ```bash
-docker build -f Dockerfile.v2 -t unobotgo:v3 .
-docker run --rm -p 8080:8080 --env-file .env unobotgo:v3
+docker build -f Dockerfile.v2 -t unokamikaze:v3 .
+docker run --rm -p 8080:8080 --env-file .env unokamikaze:v3
 ```
 
 As migrações do PostgreSQL são verificadas e aplicadas automaticamente na
@@ -141,7 +141,7 @@ Telegram reenvie updates quando o endpoint responde `5xx`. Configure
 publique esse caminho pelo proxy até o servidor (`WEB_ADDR`, padrão `:8080`).
 
 O segredo é derivado internamente por HMAC-SHA256 do `MINIAPP_SECRET` com o
-contexto `unobotgo/v2/telegram-webhook-secret/v1`; o segredo mestre nunca é
+contexto `unokamikaze/v2/telegram-webhook-secret/v1`; o segredo mestre nunca é
 enviado ao Telegram. `drop_pending_updates` é sempre `false`.
 
 As sondas `GET /healthz` e `GET /readyz` respondem na mesma porta.
@@ -178,7 +178,7 @@ go test -race ./...
 Testes de integração com PostgreSQL real usam uma base e schemas isolados:
 
 ```bash
-TEST_DATABASE_URL='postgres://postgres:senha@localhost:5432/unobot_test?sslmode=disable' \
+TEST_DATABASE_URL='postgres://postgres:senha@localhost:5432/unokamikaze_test?sslmode=disable' \
   go test -race -tags integration ./internal/storage/postgres/...
 ```
 

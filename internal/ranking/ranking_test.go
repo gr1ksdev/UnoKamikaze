@@ -1,7 +1,7 @@
 package ranking
 
 import (
-	"github.com/malbs/UnoGoBot/internal/groups"
+	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
 	"testing"
 )
 

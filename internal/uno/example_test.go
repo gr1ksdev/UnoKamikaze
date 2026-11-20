@@ -3,7 +3,7 @@ package uno_test
 import (
 	"fmt"
 
-	"github.com/malbs/UnoGoBot/internal/uno"
+	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 )
 
 func ExampleGame() {
