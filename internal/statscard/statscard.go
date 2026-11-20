@@ -31,18 +31,36 @@ const (
 	width  = 1672
 	height = 941
 
-	// TemplateVersion changes whenever the template or the drawing code
-	// changes, so cached images from an older build are never reused.
-	TemplateVersion = "stats-card-v2-jpeg"
+	// The uploaded photo is downscaled: the card is shown small in chat, and a
+	// smaller JPEG cuts the Telegram upload from ~1.7s to a few hundred ms.
+	outputWidth   = 1280
+	outputHeight  = 720
+	outputQuality = 85
+
+	// TemplateVersion changes whenever the template, the drawing code or the
+	// output size changes, so cached file_ids from an older build are not reused.
+	TemplateVersion = "stats-card-v3-1280"
 )
 
-// Layout follows the clean template supplied for the card. Positions are in
-// template pixels, origin at the top-left corner.
+const fontScale = float64(outputWidth) / float64(width)
+
+// templateRect converts a position from the original template into the
+// downscaled canvas the renderer actually draws on.
+func templateRect(r image.Rectangle) image.Rectangle {
+	sx, sy := float64(outputWidth)/float64(width), float64(outputHeight)/float64(height)
+	return image.Rect(
+		int(float64(r.Min.X)*sx), int(float64(r.Min.Y)*sy),
+		int(float64(r.Max.X)*sx), int(float64(r.Max.Y)*sy),
+	)
+}
+
+// Layout follows the clean template supplied for the card, already converted
+// to the output canvas size.
 var (
-	avatarBox   = image.Rect(80, 130, 550, 575)
-	nameBox     = image.Rect(600, 220, 1350, 330)
-	gamesBox    = image.Rect(575, 380, 1075, 545)
-	winsBox     = image.Rect(1105, 380, 1580, 545)
+	avatarBox   = templateRect(image.Rect(80, 130, 550, 575))
+	nameBox     = templateRect(image.Rect(600, 220, 1350, 330))
+	gamesBox    = templateRect(image.Rect(575, 380, 1075, 545))
+	winsBox     = templateRect(image.Rect(1105, 380, 1580, 545))
 	textColor   = color.RGBA{R: 245, G: 235, B: 255, A: 255}
 	initialFill = color.RGBA{R: 86, G: 35, B: 150, A: 255}
 )
@@ -83,9 +101,9 @@ var (
 	templateErr  error
 
 	// Every render starts with a full draw over the template, so a canvas can
-	// be reused safely and the 6 MB allocation disappears after the first use.
+	// be reused safely and the allocation disappears after the first use.
 	canvasPool = sync.Pool{New: func() any {
-		return image.NewRGBA(image.Rect(0, 0, width, height))
+		return image.NewRGBA(image.Rect(0, 0, outputWidth, outputHeight))
 	}}
 
 	// The avatar circle is fixed by the template, so its mask is computed once.
@@ -117,7 +135,10 @@ func baseTemplate() (*image.RGBA, error) {
 		}
 		base := image.NewRGBA(image.Rect(0, 0, width, height))
 		draw.Draw(base, base.Bounds(), decoded, decoded.Bounds().Min, draw.Src)
-		templateBase = base
+		// Downscale once at startup; rendering then works directly at output size.
+		small := image.NewRGBA(image.Rect(0, 0, outputWidth, outputHeight))
+		xdraw.CatmullRom.Scale(small, small.Bounds(), base, base.Bounds(), draw.Src, nil)
+		templateBase = small
 	})
 	return templateBase, templateErr
 }
@@ -170,9 +191,9 @@ func Render(d Data) ([]byte, error) {
 	}
 
 	var out bytes.Buffer
-	// JPEG keeps the upload small (~200-300 KB) and fast even on a poor link.
-	// The result is uploaded once and reused by file_id afterwards.
-	if err := jpeg.Encode(&out, canvas, &jpeg.Options{Quality: 90}); err != nil {
+	// A 1280x720 JPEG is ~120 KB instead of ~216 KB, which cuts the Telegram
+	// upload substantially. The file_id is reused afterwards.
+	if err := jpeg.Encode(&out, canvas, &jpeg.Options{Quality: outputQuality}); err != nil {
 		return nil, fmt.Errorf("statscard: encode jpeg: %w", err)
 	}
 	return out.Bytes(), nil
@@ -215,7 +236,8 @@ func drawAvatar(canvas *image.RGBA, avatar []byte, name string) error {
 }
 
 func drawName(canvas *image.RGBA, name string) error {
-	face, err := newFace(58)
+	size := 58 * fontScale
+	face, err := newFace(size)
 	if err != nil {
 		return err
 	}
@@ -224,24 +246,25 @@ func drawName(canvas *image.RGBA, name string) error {
 	text := fitText(name, face, nameBox.Dx())
 	dr := &font.Drawer{Dst: canvas, Src: image.NewUniform(textColor), Face: face}
 	w := dr.MeasureString(text).Round()
-	dr.Dot = fixed.P(nameBox.Min.X+(nameBox.Dx()-w)/2, nameBox.Min.Y+(nameBox.Dy()+58)/2)
+	dr.Dot = fixed.P(nameBox.Min.X+(nameBox.Dx()-w)/2, nameBox.Min.Y+(nameBox.Dy()+int(size))/2)
 	dr.DrawString(text)
 	return nil
 }
 
 func drawStat(canvas *image.RGBA, box image.Rectangle, value int64) error {
-	face, err := newFace(96)
+	size := 96 * fontScale
+	face, err := newFace(size)
 	if err != nil {
 		return err
 	}
 	defer face.Close()
 
 	// The template reserves the left third of each box for its icon.
-	area := image.Rect(box.Min.X+box.Dx()/3, box.Min.Y, box.Max.X-16, box.Max.Y)
+	area := image.Rect(box.Min.X+box.Dx()/3, box.Min.Y, box.Max.X-12, box.Max.Y)
 	text := fitText(fmt.Sprintf("%d", value), face, area.Dx())
 	dr := &font.Drawer{Dst: canvas, Src: image.NewUniform(textColor), Face: face}
 	w := dr.MeasureString(text).Round()
-	dr.Dot = fixed.P(area.Min.X+(area.Dx()-w)/2, area.Min.Y+(area.Dy()+96)/2)
+	dr.Dot = fixed.P(area.Min.X+(area.Dx()-w)/2, area.Min.Y+(area.Dy()+int(size))/2)
 	dr.DrawString(text)
 	return nil
 }

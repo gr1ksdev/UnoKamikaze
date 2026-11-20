@@ -15,7 +15,7 @@ import (
 const (
 	avatarDownloadTimeout = 5 * time.Second
 	avatarMaxBytes        = 2 << 20 // 2 MiB is plenty for a profile picture
-	avatarCacheTTL        = 5 * time.Minute
+	avatarCacheTTL        = 30 * time.Minute
 	avatarCacheLimit      = 256
 )
 

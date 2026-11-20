@@ -16,6 +16,7 @@ import (
 	"github.com/gr1ksdev/UnoKamikaze/internal/statscard"
 	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 	"github.com/mymmrac/telego"
+	"golang.org/x/sync/singleflight"
 )
 
 type replyToKey struct{}
@@ -45,6 +46,7 @@ type CommandHandler struct {
 	rankingService *ranking.Service
 	avatarFetcher  AvatarFetcher
 	statsCache     *statsCardCache
+	renderGroup    singleflight.Group
 	renderCard     func(statscard.Data) ([]byte, error)
 	current        *currentGameTracker
 	knownUsers     groups.UserRepository
@@ -889,7 +891,27 @@ const (
 	// deadline can never turn a failed photo into a failed fallback as well.
 	statsSendTimeout     = 10 * time.Second
 	statsFallbackTimeout = 5 * time.Second
+
+	// Stages faster than this are not worth a log line.
+	statsSlowThreshold = 200 * time.Millisecond
 )
+
+// logSlow emits a warning only when a /stats stage exceeded the threshold.
+func shortID(s string) string {
+	if len(s) > 8 {
+		return s[:8]
+	}
+	return s
+}
+
+func (h *CommandHandler) logSlow(ctx context.Context, stage string, started time.Time, attrs ...any) {
+	elapsed := time.Since(started)
+	if elapsed < statsSlowThreshold {
+		return
+	}
+	fields := append([]any{"stage", stage, "duration_ms", elapsed.Milliseconds()}, attrs...)
+	h.logger.WarnContext(ctx, "slow stats stage", fields...)
+}
 
 // statsContext drops the parent deadline (which may already be close to
 // expiring) while keeping its values, and gives the operation a fresh budget.
@@ -927,6 +949,9 @@ func (h *CommandHandler) handleStats(ctx context.Context, targetChatID int64, st
 		h.replyStats(ctx, targetChatID, "❌ Estatísticas não disponíveis no momento.")
 		return
 	}
+	totalStart := time.Now()
+	defer h.logSlow(ctx, "total", totalStart, "chat_id", targetChatID, "user_id", actorID)
+
 	readCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -943,19 +968,26 @@ func (h *CommandHandler) handleStats(ctx context.Context, targetChatID int64, st
 		fetchCtx, cancelFetch := context.WithTimeout(ctx, avatarDownloadTimeout)
 		go func() {
 			defer cancelFetch()
+			fetchStart := time.Now()
 			data, err := h.avatarFetcher.Fetch(fetchCtx, int64(actorID))
+			h.logSlow(fetchCtx, "avatar_fetch", fetchStart, "user_id", actorID)
 			avatarCh <- avatarResult{data: data, err: err}
 		}()
 	}
 
+	statsStart := time.Now()
 	stats, err := h.rankingService.ReadPlayerStats(readCtx, int64(statsChatID), int64(actorID))
+	h.logSlow(ctx, "db.stats", statsStart, "chat_id", statsChatID, "user_id", actorID)
 	if err != nil {
 		h.logger.WarnContext(ctx, "failed to read player stats", "chat_id", statsChatID, "user_id", actorID, "error", err)
 		h.replyStats(ctx, targetChatID, "⚠️ Não foi possível consultar suas estatísticas. Tente novamente.")
 		return
 	}
 	if scope != "" {
-		if group, err := h.rankingService.ListGroupRanking(readCtx, int64(statsChatID)); err == nil {
+		rankStart := time.Now()
+		group, rankErr := h.rankingService.ListGroupRanking(readCtx, int64(statsChatID))
+		h.logSlow(ctx, "db.ranking", rankStart, "chat_id", statsChatID, "user_id", actorID)
+		if rankErr == nil {
 			for i, entry := range group.Entries {
 				if entry.UserID == int64(actorID) {
 					stats.Rank = i + 1
@@ -971,7 +1003,9 @@ func (h *CommandHandler) handleStats(ctx context.Context, targetChatID int64, st
 	}
 	var avatar []byte
 	if avatarCh != nil {
+		waitStart := time.Now()
 		result := <-avatarCh
+		h.logSlow(ctx, "avatar_wait", waitStart, "user_id", actorID)
 		if result.err != nil {
 			h.logger.WarnContext(ctx, "failed to fetch profile photo", "user_id", actorID, "error", result.err)
 		} else {
@@ -991,8 +1025,11 @@ func (h *CommandHandler) handleStats(ctx context.Context, targetChatID int64, st
 
 	// A hit reuses the file_id Telegram returned on the first upload: no
 	// rendering, no re-upload. The caption is always rebuilt from fresh data.
+	cacheHit := false
 	if h.statsCache != nil {
 		if fileID, ok := h.statsCache.Get(token); ok {
+			cacheHit = true
+			h.logger.InfoContext(ctx, "stats cache hit", "token", shortID(token), "chat_id", targetChatID)
 			params := &telego.SendPhotoParams{
 				ChatID:          telego.ChatID{ID: targetChatID},
 				Photo:           telego.InputFile{FileID: fileID},
@@ -1001,7 +1038,9 @@ func (h *CommandHandler) handleStats(ctx context.Context, targetChatID int64, st
 				ReplyParameters: replyParameters(ctx),
 			}
 			sendCtx, cancelSend := statsContext(ctx, statsSendTimeout)
+			sendStart := time.Now()
 			_, err := h.bot.SendPhoto(sendCtx, params)
+			h.logSlow(ctx, "send_photo", sendStart, "chat_id", targetChatID, "cache_hit", true)
 			cancelSend()
 			if err == nil {
 				return
@@ -1011,8 +1050,17 @@ func (h *CommandHandler) handleStats(ctx context.Context, targetChatID int64, st
 			}
 		}
 	}
+	if !cacheHit {
+		h.logger.InfoContext(ctx, "stats cache miss", "token", shortID(token), "chat_id", targetChatID)
+	}
 
-	card, err := h.renderCard(data)
+	renderStart := time.Now()
+	// Concurrent /stats for the same token share one render.
+	rendered, err, _ := h.renderGroup.Do(token, func() (any, error) {
+		return h.renderCard(data)
+	})
+	h.logSlow(ctx, "render", renderStart, "user_id", actorID)
+	card, _ := rendered.([]byte)
 	if err != nil {
 		h.logger.WarnContext(ctx, "failed to render stats card", "chat_id", targetChatID, "error", err)
 		h.replyStats(ctx, targetChatID, h.renderer.RenderPlayerStats(stats, scope))
@@ -1026,7 +1074,9 @@ func (h *CommandHandler) handleStats(ctx context.Context, targetChatID int64, st
 		ReplyParameters: replyParameters(ctx),
 	}
 	sendCtx, cancelSend := statsContext(ctx, statsSendTimeout)
+	sendStart := time.Now()
 	message, err := h.bot.SendPhoto(sendCtx, params)
+	h.logSlow(ctx, "send_photo", sendStart, "chat_id", targetChatID, "cache_hit", false)
 	cancelSend()
 	if err != nil {
 		h.logger.WarnContext(ctx, "failed to send stats photo", "chat_id", targetChatID, "error", err)
@@ -1035,7 +1085,10 @@ func (h *CommandHandler) handleStats(ctx context.Context, targetChatID int64, st
 	}
 	if h.statsCache != nil {
 		if fileID := largestPhotoID(message); fileID != "" {
+			h.logger.InfoContext(ctx, "stats cache stored", "token", shortID(token), "file_id", shortID(fileID))
 			h.statsCache.Put(token, fileID)
+		} else {
+			h.logger.WarnContext(ctx, "sendPhoto response had no file_id; next /stats will re-render", "token", shortID(token))
 		}
 	}
 }

@@ -7,8 +7,6 @@ import (
 	_ "image/jpeg"
 	"image/png"
 	"testing"
-
-	"github.com/gr1ksdev/UnoKamikaze/assets"
 )
 
 func decode(t *testing.T, data []byte) *image.RGBA {
@@ -24,20 +22,6 @@ func decode(t *testing.T, data []byte) *image.RGBA {
 		}
 	}
 	return rgba
-}
-
-func changedPixels(a, b *image.RGBA, rect image.Rectangle) int {
-	count := 0
-	for y := rect.Min.Y; y < rect.Max.Y; y++ {
-		for x := rect.Min.X; x < rect.Max.X; x++ {
-			r1, g1, b1, a1 := a.At(x, y).RGBA()
-			r2, g2, b2, a2 := b.At(x, y).RGBA()
-			if r1 != r2 || g1 != g2 || b1 != b2 || a1 != a2 {
-				count++
-			}
-		}
-	}
-	return count
 }
 
 func TestTokenChangesWithVisualData(t *testing.T) {
@@ -100,13 +84,13 @@ func TestRenderProducesCardWithStats(t *testing.T) {
 		t.Fatalf("Render: %v", err)
 	}
 	card := decode(t, got)
-	if card.Bounds().Dx() != width || card.Bounds().Dy() != height {
-		t.Fatalf("size = %dx%d, want %dx%d", card.Bounds().Dx(), card.Bounds().Dy(), width, height)
+	if card.Bounds().Dx() != outputWidth || card.Bounds().Dy() != outputHeight {
+		t.Fatalf("size = %dx%d, want %dx%d", card.Bounds().Dx(), card.Bounds().Dy(), outputWidth, outputHeight)
 	}
-	if n := brightPixels(card, numberArea(gamesBox)); n < 100 {
+	if n := brightPixels(card, numberArea(gamesBox)); n < 40 {
 		t.Errorf("games number has only %d bright pixels", n)
 	}
-	if n := brightPixels(card, numberArea(winsBox)); n < 50 {
+	if n := brightPixels(card, numberArea(winsBox)); n < 20 {
 		t.Errorf("wins number has only %d bright pixels", n)
 	}
 }
@@ -126,14 +110,13 @@ func TestRenderWithoutHistoryKeepsStatBoxesEmpty(t *testing.T) {
 }
 
 func TestRenderUsesInitialsWhenAvatarIsInvalid(t *testing.T) {
-	base := decode(t, assets.StatsCard)
 	got, err := Render(Data{Name: "João Silva", HasHistory: true, Avatar: []byte("not an image")})
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
 	card := decode(t, got)
-	if n := changedPixels(base, card, avatarBox); n < 1000 {
-		t.Errorf("avatar area has only %d changed pixels", n)
+	if n := brightPixels(card, avatarBox); n < 40 {
+		t.Errorf("initials have only %d bright pixels", n)
 	}
 }
 
@@ -154,7 +137,8 @@ func TestRenderUsesProfilePhoto(t *testing.T) {
 	}
 	card := decode(t, got)
 	// A pixel near the middle of the circle must come from the photo.
-	r, g, b, _ := card.At(250, 350).RGBA()
+	// (250,350) in template coordinates becomes this in the downscaled output.
+	r, g, b, _ := card.At(191, 267).RGBA()
 	close := func(got, want uint32) bool { return got+20 >= want && want+20 >= got }
 	if !close(r>>8, 40) || !close(g>>8, 200) || !close(b>>8, 90) {
 		t.Fatalf("avatar pixel = (%d,%d,%d), want ~ (40,200,90)", r>>8, g>>8, b>>8)

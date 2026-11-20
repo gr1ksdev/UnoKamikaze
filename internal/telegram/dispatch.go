@@ -32,6 +32,7 @@ type chatTask struct {
 	generation uint64
 	ctx        context.Context
 	fn         func(ctx context.Context)
+	queuedAt   time.Time
 }
 
 type recoveryTask struct {
@@ -131,6 +132,10 @@ func (d *Dispatcher) start() {
 		go func() {
 			defer d.workersWg.Done()
 			for task := range d.readQueue {
+				if wait := time.Since(task.queuedAt); wait > statsSlowThreshold {
+					d.logger.Warn("slow read queue wait",
+						"chat_id", task.chatID, "wait_ms", wait.Milliseconds())
+				}
 				taskCtx, cancel := context.WithTimeout(task.ctx, ReadTaskTimeout)
 				d.runSafely("read", task.chatID, func() { task.fn(taskCtx) })
 				cancel()
@@ -232,7 +237,7 @@ func (d *Dispatcher) EnqueueRead(chatID game.ChatID, fn func(ctx context.Context
 	if fn == nil || d.ctx.Err() != nil {
 		return false
 	}
-	task := chatTask{chatID: chatID, ctx: d.ctx, fn: fn}
+	task := chatTask{chatID: chatID, ctx: d.ctx, fn: fn, queuedAt: time.Now()}
 	select {
 	case <-d.ctx.Done():
 		return false
