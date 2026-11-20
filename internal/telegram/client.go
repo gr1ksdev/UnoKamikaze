@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -89,12 +90,22 @@ type BotAPI interface {
 	UpdatesViaLongPolling(ctx context.Context, params *telego.GetUpdatesParams, options ...telego.LongPollingOption) (<-chan telego.Update, error)
 	SendMessage(ctx context.Context, params *telego.SendMessageParams) (*telego.Message, error)
 	SendSticker(ctx context.Context, params *telego.SendStickerParams) (*telego.Message, error)
+	SendPhoto(ctx context.Context, params *telego.SendPhotoParams) (*telego.Message, error)
 	EditMessageText(ctx context.Context, params *telego.EditMessageTextParams) (*telego.Message, error)
 	EditMessageReplyMarkup(ctx context.Context, params *telego.EditMessageReplyMarkupParams) (*telego.Message, error)
 	AnswerInlineQuery(ctx context.Context, params *telego.AnswerInlineQueryParams) error
 	AnswerCallbackQuery(ctx context.Context, params *telego.AnswerCallbackQueryParams) error
 	SetMessageReaction(ctx context.Context, params *telego.SetMessageReactionParams) error
 }
+
+// namedBytes adapts an in-memory PNG to telego's NamedReader, so photos can be
+// uploaded without touching the filesystem (the runtime image is distroless).
+type namedBytes struct {
+	*bytes.Reader
+	name string
+}
+
+func (n namedBytes) Name() string { return n.name }
 
 // explicitAnswerInlineQueryParams ensures cache_time:0, is_personal:true and next_offset:""
 // are explicitly serialized to JSON, bypassing telego's default omitempty behavior.

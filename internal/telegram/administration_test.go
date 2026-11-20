@@ -174,11 +174,20 @@ func TestStatsCommandReportsThePlayerHistory(t *testing.T) {
 		From: &telego.User{ID: 42, FirstName: "Freddy"},
 		Text: "/stats@unokamikaze",
 	})
-	last := api.SentMessages[len(api.SentMessages)-1]
-	for _, want := range []string{"Sala Stats", "Partidas pontuadas: 7", "Vitórias: 2", "Melhor colocação: 1º", "Colocação média: 2.14", "Posição no ranking: 3 de 9"} {
-		if !strings.Contains(last.Text, want) {
-			t.Fatalf("missing %q in %s", want, last.Text)
+	if len(api.SentPhotos) != 1 {
+		t.Fatalf("sent %d photos, want 1", len(api.SentPhotos))
+	}
+	photo := api.SentPhotos[0]
+	if photo.ChatID.ID != -700 {
+		t.Fatalf("photo chat = %d, want -700", photo.ChatID.ID)
+	}
+	for _, want := range []string{"Sala Stats", "Pontos: 12,00 pts", "Melhor colocação: 1º", "Colocação média: 2.14", "Posição no ranking: 3 de 9"} {
+		if !strings.Contains(photo.Caption, want) {
+			t.Fatalf("missing %q in caption %s", want, photo.Caption)
 		}
+	}
+	if len(api.SentMessages) != 0 {
+		t.Fatalf("unexpected text fallback: %+v", api.SentMessages)
 	}
 }
 

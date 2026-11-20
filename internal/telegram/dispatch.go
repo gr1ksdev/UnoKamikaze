@@ -19,9 +19,12 @@ const (
 	InlineQueueCap        = 128
 	RecoveryWorkerCount   = 2
 	RecoveryQueueCapacity = 32
+	ReadWorkerCount       = 4
+	ReadQueueCapacity     = 128
 
 	ChatTaskTimeout     = 20 * time.Second
 	RecoveryTaskTimeout = 15 * time.Second
+	ReadTaskTimeout     = 30 * time.Second
 )
 
 type chatTask struct {
@@ -50,6 +53,7 @@ type Dispatcher struct {
 	chatQueues    [ChatWorkerCount]chan chatTask
 	inlineQueue   chan *telego.InlineQuery
 	recoveryQueue chan recoveryTask
+	readQueue     chan chatTask
 	inlineHandler func(ctx context.Context, query *telego.InlineQuery)
 	chatMu        sync.Mutex
 	chatStates    map[game.ChatID]chatGeneration
@@ -70,6 +74,7 @@ func NewDispatcher(logger *slog.Logger, inlineHandler func(ctx context.Context, 
 		logger:        logger,
 		inlineQueue:   make(chan *telego.InlineQuery, InlineQueueCap),
 		recoveryQueue: make(chan recoveryTask, RecoveryQueueCapacity),
+		readQueue:     make(chan chatTask, ReadQueueCapacity),
 		inlineHandler: inlineHandler,
 		chatStates:    make(map[game.ChatID]chatGeneration),
 		ctx:           ctx,
@@ -118,6 +123,20 @@ func (d *Dispatcher) start() {
 			}
 		}()
 		d.logger.Debug("started inline worker", "worker_id", workerID)
+	}
+
+	for i := 0; i < ReadWorkerCount; i++ {
+		workerID := i
+		d.workersWg.Add(1)
+		go func() {
+			defer d.workersWg.Done()
+			for task := range d.readQueue {
+				taskCtx, cancel := context.WithTimeout(task.ctx, ReadTaskTimeout)
+				d.runSafely("read", task.chatID, func() { task.fn(taskCtx) })
+				cancel()
+			}
+		}()
+		d.logger.Debug("started read worker", "worker_id", workerID)
 	}
 
 	for i := 0; i < RecoveryWorkerCount; i++ {
@@ -203,6 +222,24 @@ func (d *Dispatcher) EnqueueRecovery(chatID game.ChatID, fn func(ctx context.Con
 		return true
 	default:
 		d.logger.Warn("recovery queue saturated, dropping task", "chat_id", chatID)
+		return false
+	}
+}
+
+// EnqueueRead schedules read-only work (currently /stats) away from the chat
+// queues, so a slow image upload never holds up gameplay in the same group.
+func (d *Dispatcher) EnqueueRead(chatID game.ChatID, fn func(ctx context.Context)) bool {
+	if fn == nil || d.ctx.Err() != nil {
+		return false
+	}
+	task := chatTask{chatID: chatID, ctx: d.ctx, fn: fn}
+	select {
+	case <-d.ctx.Done():
+		return false
+	case d.readQueue <- task:
+		return true
+	default:
+		d.logger.Warn("read queue saturated, dropping task", "chat_id", chatID)
 		return false
 	}
 }
@@ -293,6 +330,7 @@ func (d *Dispatcher) Stop(timeout time.Duration) {
 		}
 		close(d.inlineQueue)
 		close(d.recoveryQueue)
+		close(d.readQueue)
 
 		done := make(chan struct{})
 		go func() {

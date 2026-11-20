@@ -81,7 +81,7 @@ seguem o idioma configurado naquele grupo.
 | `/iniciar` | `/start` | Inicia a partida com pelo menos dois jogadores |
 | `/estado` | `/state` | Mostra o lobby ou o estado detalhado da partida |
 | `/ranking` | `/ranking` | Ranking mensal do grupo; no privado, seus rankings |
-| `/stats` | `/stats` | Suas estatísticas: partidas, vitórias, pontos, colocação |
+| `/stats` | `/stats` | Card em foto com partidas e vitórias; pontos e colocação na legenda |
 | `/sair` | `/leave` | Sai da partida em andamento |
 | `/pular` | `/skip` | Qualquer participante pode pedir; terceiros só após o prazo do jogador da vez |
 | `/expulsar` | `/kick` | Expulsa um jogador; responda à mensagem dele |

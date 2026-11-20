@@ -82,6 +82,7 @@ func Run(ctx context.Context, cfg *config.Config, logger *slog.Logger) error {
 	bot := telegram.New(client, svc, telegram.NewTokenStore(config.InlineTokenLimit, config.InlineTokenUserLimit, time.Now, nil), telegram.NewRenderer(nil), config.InlineTokenTTL, logger)
 	bot.SetGroupConfigs(store)
 	bot.SetKnownUsers(store)
+	bot.SetAvatarFetcher(telegram.NewAvatarFetcher(client, nil))
 	bot.SetResultRepository(store)
 	finalizer := &game.Finalizer{Service: svc, Repository: store, Notify: bot.NotifyCommitted, OnFailure: func(id string, err error) {
 		logger.Warn("completed result pending; retry scheduled", "game_id", id, "error", err)

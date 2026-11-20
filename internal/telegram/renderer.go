@@ -540,6 +540,36 @@ func (r *Renderer) RenderPlayerStats(stats ranking.PlayerStats, scope string) st
 	return strings.TrimRight(sb.String(), "\n")
 }
 
+// RenderStatsCaption carries the stats that do not fit on the photo. The card
+// itself shows games and wins; the caption keeps the remaining history visible.
+func (r *Renderer) RenderStatsCaption(stats ranking.PlayerStats, scope string) string {
+	var sb strings.Builder
+	sb.WriteString("📊 <b>Suas estatísticas")
+	if scope != "" {
+		sb.WriteString(" em " + html.EscapeString(scope))
+	}
+	sb.WriteString("</b>\n\n")
+	if !stats.HasHistory() {
+		sb.WriteString("Você ainda não tem partidas pontuadas")
+		if scope != "" {
+			sb.WriteString(" aqui")
+		}
+		sb.WriteString(".")
+		return sb.String()
+	}
+	sb.WriteString(fmt.Sprintf("Pontos: %s\n", ranking.FormatScore(stats.System, stats.Score)))
+	if stats.BestPosition > 0 {
+		sb.WriteString(fmt.Sprintf("Melhor colocação: %dº\n", stats.BestPosition))
+	}
+	if stats.AvgPosition != "" {
+		sb.WriteString(fmt.Sprintf("Colocação média: %s\n", stats.AvgPosition))
+	}
+	if stats.Rank > 0 && stats.Total > 0 {
+		sb.WriteString(fmt.Sprintf("Posição no ranking: %d de %d", stats.Rank, stats.Total))
+	}
+	return strings.TrimRight(sb.String(), "\n")
+}
+
 // RenderGroupWelcome formats the introductory message when the bot joins a group.
 func (r *Renderer) RenderGroupWelcome(config groups.Config) string {
 	rankLabel := "Vitória"

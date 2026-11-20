@@ -109,6 +109,12 @@ func (b *Bot) lookupMembership(ctx context.Context, chatID, userID int64) (group
 	return lookupMembershipAPI(ctx, b.api, chatID, userID)
 }
 
+// SetAvatarFetcher enables profile photos on the /stats card. Without it the
+// card falls back to the player's initials.
+func (b *Bot) SetAvatarFetcher(fetcher AvatarFetcher) {
+	b.cmdHandler.avatarFetcher = fetcher
+}
+
 func (b *Bot) SetTurnTimeout(timeout time.Duration) { b.turnTimeout = timeout }
 func (b *Bot) SetTurnMin(min time.Duration)         { b.turnMin = min }
 func (b *Bot) SetTransport(cfg TransportConfig)     { b.transport = cfg.normalized() }
@@ -477,10 +483,17 @@ func (b *Bot) submitUpdate(ctx context.Context, update telego.Update) bool {
 }
 func (b *Bot) processUpdate(ctx context.Context, update telego.Update) bool {
 	if update.Message != nil {
-		if command, _, ok := parseMessageCommand(update.Message, b.username); ok && command == "reset" {
+		command, _, isCommand := parseMessageCommand(update.Message, b.username)
+		if isCommand && command == "reset" {
 			chatID := game.ChatID(update.Message.Chat.ID)
 			return b.dispatcher.EnqueueRecovery(chatID, func(c context.Context) {
 				b.cmdHandler.HandleReset(c, update.Message, func() { b.dispatcher.ResetChat(chatID) })
+			})
+		}
+		if isCommand && command == "stats" {
+			chatID := game.ChatID(update.Message.Chat.ID)
+			return b.dispatcher.EnqueueRead(chatID, func(c context.Context) {
+				b.cmdHandler.HandleStats(c, update.Message)
 			})
 		}
 	}

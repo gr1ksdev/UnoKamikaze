@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -12,12 +13,39 @@ import (
 	"github.com/gr1ksdev/UnoKamikaze/internal/game"
 	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
 	"github.com/gr1ksdev/UnoKamikaze/internal/ranking"
+	"github.com/gr1ksdev/UnoKamikaze/internal/statscard"
 	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 	"github.com/mymmrac/telego"
 )
 
+type replyToKey struct{}
+
+// withReplyTo records the command message a response should be attached to.
+// It lives in the context so handlers never need a shared mutable field.
+func withReplyTo(ctx context.Context, messageID int) context.Context {
+	if messageID <= 0 {
+		return ctx
+	}
+	return context.WithValue(ctx, replyToKey{}, messageID)
+}
+
+func replyToFrom(ctx context.Context) int {
+	id, _ := ctx.Value(replyToKey{}).(int)
+	return id
+}
+
+func replyParameters(ctx context.Context) *telego.ReplyParameters {
+	if id := replyToFrom(ctx); id > 0 {
+		return &telego.ReplyParameters{MessageID: id, AllowSendingWithoutReply: true}
+	}
+	return nil
+}
+
 type CommandHandler struct {
 	rankingService *ranking.Service
+	avatarFetcher  AvatarFetcher
+	statsCache     *statsCardCache
+	renderCard     func(statscard.Data) ([]byte, error)
 	current        *currentGameTracker
 	knownUsers     groups.UserRepository
 	finalize       func(context.Context, game.Outcome) func()
@@ -70,6 +98,8 @@ func NewCommandHandler(
 		botUsername: strings.ToLower(botUsername),
 		languages:   newLanguageCache(),
 		logger:      logger,
+		statsCache:  newStatsCardCache(statsCacheLimit),
+		renderCard:  statscard.Render,
 	}
 }
 
@@ -178,6 +208,7 @@ func (h *CommandHandler) reply(ctx context.Context, chatID int64, text string, m
 		Text:      text,
 		ParseMode: "HTML",
 	}
+	params.ReplyParameters = replyParameters(ctx)
 	if markup != nil {
 		params.ReplyMarkup = markup
 	}
@@ -191,6 +222,7 @@ func (h *CommandHandler) HandleMessage(ctx context.Context, msg *telego.Message)
 	if msg == nil || msg.Text == "" {
 		return
 	}
+	ctx = withReplyTo(ctx, msg.MessageID)
 
 	// Update user in presentation cache if From is available
 	if msg.From != nil {
@@ -238,7 +270,7 @@ func (h *CommandHandler) HandleMessage(ctx context.Context, msg *telego.Message)
 		case cmdRanking:
 			h.handlePrivateRanking(ctx, msg.Chat.ID, int64(actorID))
 		case cmdStats:
-			h.handleStats(ctx, 0, actorID, "")
+			h.handleStats(ctx, msg.Chat.ID, 0, actorID, "", msg.From.FirstName)
 		default:
 			if _, known := portugueseCommands[strings.ToLower(cmdName)]; known {
 				h.reply(ctx, msg.Chat.ID, fmt.Sprintf("⚠️ Este comando só pode ser utilizado em grupos. Adicione o bot a um grupo para jogar!\n\nUse %s para mais instruções.", commandName(cmdHelp, groups.CommandsPT)), nil)
@@ -287,7 +319,7 @@ func (h *CommandHandler) HandleMessage(ctx context.Context, msg *telego.Message)
 	case cmdRanking:
 		h.handleRanking(ctx, msg.Chat.ID)
 	case cmdStats:
-		h.handleStats(ctx, chatID, actorID, msg.Chat.Title)
+		h.handleStats(ctx, msg.Chat.ID, chatID, actorID, msg.Chat.Title, msg.From.FirstName)
 	case cmdNew:
 		h.handleNovoObserved(ctx, actorID, chatID, msg.Chat.Title, msg.From)
 	case cmdClose, cmdOpen:
@@ -355,6 +387,7 @@ func (h *CommandHandler) HandleReset(ctx context.Context, msg *telego.Message, r
 	if msg == nil || msg.From == nil || msg.From.IsBot {
 		return
 	}
+	ctx = withReplyTo(ctx, msg.MessageID)
 	cmdName, _, ok := parseMessageCommand(msg, h.botUsername)
 	if !ok || cmdName != "reset" {
 		return
@@ -851,22 +884,78 @@ func (h *CommandHandler) handleExpulsar(ctx context.Context, msg *telego.Message
 	h.reply(ctx, int64(chatID), text, nil)
 }
 
-// handleStats shows the accumulated history of the requesting player.
-func (h *CommandHandler) handleStats(ctx context.Context, chatID game.ChatID, actorID uno.PlayerID, scope string) {
+const (
+	// Network work in /stats gets its own budget so an expired chat-task
+	// deadline can never turn a failed photo into a failed fallback as well.
+	statsSendTimeout     = 10 * time.Second
+	statsFallbackTimeout = 5 * time.Second
+)
+
+// statsContext drops the parent deadline (which may already be close to
+// expiring) while keeping its values, and gives the operation a fresh budget.
+func statsContext(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), timeout)
+}
+
+func (h *CommandHandler) replyStats(ctx context.Context, chatID int64, text string) {
+	sendCtx, cancel := statsContext(ctx, statsFallbackTimeout)
+	defer cancel()
+	h.reply(sendCtx, chatID, text, nil)
+}
+
+// HandleStats is the read-only entry point used by the dedicated read queue.
+// It intentionally skips the side effects of HandleMessage (observing group
+// titles, player names and the current game) so it never touches game state.
+func (h *CommandHandler) HandleStats(ctx context.Context, msg *telego.Message) {
+	if msg == nil || msg.From == nil || msg.From.IsBot || msg.SenderChat != nil || msg.IsTopicMessage {
+		return
+	}
+	ctx = withReplyTo(ctx, msg.MessageID)
+	actorID := uno.PlayerID(msg.From.ID)
+	if msg.Chat.Type == "group" || msg.Chat.Type == "supergroup" {
+		chatID := game.ChatID(msg.Chat.ID)
+		h.handleStats(ctx, msg.Chat.ID, chatID, actorID, msg.Chat.Title, msg.From.FirstName)
+		return
+	}
+	h.handleStats(ctx, msg.Chat.ID, 0, actorID, "", msg.From.FirstName)
+}
+
+// handleStats sends the player's stats card as a photo. targetChatID is where
+// the message goes; statsChatID is the aggregation scope (zero in private).
+func (h *CommandHandler) handleStats(ctx context.Context, targetChatID int64, statsChatID game.ChatID, actorID uno.PlayerID, scope, displayName string) {
 	if h.rankingService == nil {
-		h.reply(ctx, int64(chatID), "❌ Estatísticas não disponíveis no momento.", nil)
+		h.replyStats(ctx, targetChatID, "❌ Estatísticas não disponíveis no momento.")
 		return
 	}
 	readCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	stats, err := h.rankingService.ReadPlayerStats(readCtx, int64(chatID), int64(actorID))
+
+	// Start the avatar work before the database reads so the network latency
+	// overlaps. The buffered channel keeps the goroutine from leaking even if
+	// a database error makes us return early.
+	type avatarResult struct {
+		data []byte
+		err  error
+	}
+	var avatarCh chan avatarResult
+	if h.avatarFetcher != nil {
+		avatarCh = make(chan avatarResult, 1)
+		fetchCtx, cancelFetch := context.WithTimeout(ctx, avatarDownloadTimeout)
+		go func() {
+			defer cancelFetch()
+			data, err := h.avatarFetcher.Fetch(fetchCtx, int64(actorID))
+			avatarCh <- avatarResult{data: data, err: err}
+		}()
+	}
+
+	stats, err := h.rankingService.ReadPlayerStats(readCtx, int64(statsChatID), int64(actorID))
 	if err != nil {
-		h.logger.WarnContext(ctx, "failed to read player stats", "chat_id", chatID, "user_id", actorID, "error", err)
-		h.reply(ctx, int64(chatID), "⚠️ Não foi possível consultar suas estatísticas. Tente novamente.", nil)
+		h.logger.WarnContext(ctx, "failed to read player stats", "chat_id", statsChatID, "user_id", actorID, "error", err)
+		h.replyStats(ctx, targetChatID, "⚠️ Não foi possível consultar suas estatísticas. Tente novamente.")
 		return
 	}
 	if scope != "" {
-		if group, err := h.rankingService.ListGroupRanking(readCtx, int64(chatID)); err == nil {
+		if group, err := h.rankingService.ListGroupRanking(readCtx, int64(statsChatID)); err == nil {
 			for i, entry := range group.Entries {
 				if entry.UserID == int64(actorID) {
 					stats.Rank = i + 1
@@ -876,7 +965,87 @@ func (h *CommandHandler) handleStats(ctx context.Context, chatID game.ChatID, ac
 			}
 		}
 	}
-	h.reply(ctx, int64(chatID), h.renderer.RenderPlayerStats(stats, scope), nil)
+
+	if displayName == "" {
+		displayName = h.renderer.userCache.GetRawName(actorID)
+	}
+	var avatar []byte
+	if avatarCh != nil {
+		result := <-avatarCh
+		if result.err != nil {
+			h.logger.WarnContext(ctx, "failed to fetch profile photo", "user_id", actorID, "error", result.err)
+		} else {
+			avatar = result.data
+		}
+	}
+
+	data := statscard.Data{
+		Name:       displayName,
+		Games:      stats.Games,
+		Wins:       stats.Wins,
+		HasHistory: stats.HasHistory(),
+		Avatar:     avatar,
+	}
+	token := statscard.Token(data)
+	caption := h.renderer.RenderStatsCaption(stats, scope)
+
+	// A hit reuses the file_id Telegram returned on the first upload: no
+	// rendering, no re-upload. The caption is always rebuilt from fresh data.
+	if h.statsCache != nil {
+		if fileID, ok := h.statsCache.Get(token); ok {
+			params := &telego.SendPhotoParams{
+				ChatID:          telego.ChatID{ID: targetChatID},
+				Photo:           telego.InputFile{FileID: fileID},
+				Caption:         caption,
+				ParseMode:       "HTML",
+				ReplyParameters: replyParameters(ctx),
+			}
+			sendCtx, cancelSend := statsContext(ctx, statsSendTimeout)
+			_, err := h.bot.SendPhoto(sendCtx, params)
+			cancelSend()
+			if err == nil {
+				return
+			} else {
+				h.logger.DebugContext(ctx, "cached stats photo failed; re-rendering", "error", err)
+				h.statsCache.Delete(token)
+			}
+		}
+	}
+
+	card, err := h.renderCard(data)
+	if err != nil {
+		h.logger.WarnContext(ctx, "failed to render stats card", "chat_id", targetChatID, "error", err)
+		h.replyStats(ctx, targetChatID, h.renderer.RenderPlayerStats(stats, scope))
+		return
+	}
+	params := &telego.SendPhotoParams{
+		ChatID:          telego.ChatID{ID: targetChatID},
+		Photo:           telego.InputFile{File: namedBytes{Reader: bytes.NewReader(card), name: "stats.jpg"}},
+		Caption:         caption,
+		ParseMode:       "HTML",
+		ReplyParameters: replyParameters(ctx),
+	}
+	sendCtx, cancelSend := statsContext(ctx, statsSendTimeout)
+	message, err := h.bot.SendPhoto(sendCtx, params)
+	cancelSend()
+	if err != nil {
+		h.logger.WarnContext(ctx, "failed to send stats photo", "chat_id", targetChatID, "error", err)
+		h.replyStats(ctx, targetChatID, h.renderer.RenderPlayerStats(stats, scope))
+		return
+	}
+	if h.statsCache != nil {
+		if fileID := largestPhotoID(message); fileID != "" {
+			h.statsCache.Put(token, fileID)
+		}
+	}
+}
+
+// largestPhotoID returns the highest-resolution photo of a sendPhoto reply.
+func largestPhotoID(message *telego.Message) string {
+	if message == nil || len(message.Photo) == 0 {
+		return ""
+	}
+	return message.Photo[len(message.Photo)-1].FileID
 }
 
 // isChatAdmin asks Telegram whether the user administers the chat.

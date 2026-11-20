@@ -27,6 +27,13 @@ type mockBotAPI struct {
 
 	SentMessages         []telego.SendMessageParams
 	SentStickers         []telego.SendStickerParams
+	SentPhotos           []telego.SendPhotoParams
+	SendPhotoErr         error
+	SendPhotoFileIDErr   error
+	PhotoFileID          string
+	SentPhotoSignal      chan struct{}
+	SendPhotoCtx         context.Context
+	SendPhotoCtxErr      error
 	SentReactions        []telego.SetMessageReactionParams
 	EditedMessages       []telego.EditMessageTextParams
 	EditedMarkups        []telego.EditMessageReplyMarkupParams
@@ -171,6 +178,33 @@ func (m *mockBotAPI) SendSticker(ctx context.Context, params *telego.SendSticker
 		m.SentStickers = append(m.SentStickers, *params)
 	}
 	return &telego.Message{MessageID: len(m.SentStickers)}, nil
+}
+
+func (m *mockBotAPI) SendPhoto(ctx context.Context, params *telego.SendPhotoParams) (*telego.Message, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.SendPhotoCtx = ctx
+	m.SendPhotoCtxErr = ctx.Err()
+	if params != nil {
+		m.SentPhotos = append(m.SentPhotos, *params)
+	}
+	if m.SentPhotoSignal != nil {
+		select {
+		case m.SentPhotoSignal <- struct{}{}:
+		default:
+		}
+	}
+	if m.SendPhotoErr != nil {
+		return nil, m.SendPhotoErr
+	}
+	if m.SendPhotoFileIDErr != nil && params.Photo.FileID != "" {
+		return nil, m.SendPhotoFileIDErr
+	}
+	msg := &telego.Message{MessageID: len(m.SentPhotos)}
+	if m.PhotoFileID != "" {
+		msg.Photo = []telego.PhotoSize{{FileID: "small_" + m.PhotoFileID}, {FileID: m.PhotoFileID}}
+	}
+	return msg, nil
 }
 
 func (m *mockBotAPI) EditMessageText(ctx context.Context, params *telego.EditMessageTextParams) (*telego.Message, error) {
