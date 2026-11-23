@@ -93,6 +93,12 @@ func TestStatsPrivateSendsPhotoToTheRequestingChat(t *testing.T) {
 	if reply := api.SentPhotos[0].ReplyParameters; reply == nil || reply.MessageID != 777 {
 		t.Fatalf("photo reply = %+v, want reply to 777", reply)
 	}
+	if reply := api.SentMessages[0].ReplyParameters; reply == nil || reply.MessageID != 777 {
+		t.Fatalf("loading reply = %+v, want reply to 777", reply)
+	}
+	if len(api.DeletedMessages) != 1 || api.DeletedMessages[0].MessageID != 1 {
+		t.Fatalf("loading message not removed: %+v", api.DeletedMessages)
+	}
 	if strings.Contains(api.SentPhotos[0].Caption, " em ") {
 		t.Fatalf("private caption should have no scope: %s", api.SentPhotos[0].Caption)
 	}
@@ -132,14 +138,21 @@ func TestStatsFallsBackToTextWhenPhotoFails(t *testing.T) {
 	if len(api.SentPhotos) != 1 {
 		t.Fatalf("sent %d photos, want 1", len(api.SentPhotos))
 	}
-	if len(api.SentMessages) != 1 {
-		t.Fatalf("sent %d texts, want fallback", len(api.SentMessages))
+	if len(api.SentMessages) != 2 {
+		t.Fatalf("sent %d texts, want loading + fallback", len(api.SentMessages))
 	}
-	if reply := api.SentMessages[0].ReplyParameters; reply == nil || reply.MessageID != 888 {
+	if !strings.Contains(api.SentMessages[0].Text, "⏳") {
+		t.Fatalf("missing loading message: %+v", api.SentMessages[0])
+	}
+	fallback := api.SentMessages[len(api.SentMessages)-1]
+	if reply := fallback.ReplyParameters; reply == nil || reply.MessageID != 888 {
 		t.Fatalf("fallback reply = %+v, want reply to 888", reply)
 	}
-	if !strings.Contains(api.SentMessages[0].Text, "Partidas pontuadas: 2") {
-		t.Fatalf("unexpected fallback: %s", api.SentMessages[0].Text)
+	if !strings.Contains(fallback.Text, "Partidas pontuadas: 2") {
+		t.Fatalf("unexpected fallback: %s", fallback.Text)
+	}
+	if len(api.DeletedMessages) != 1 || api.DeletedMessages[0].MessageID != 1 {
+		t.Fatalf("loading message not removed: %+v", api.DeletedMessages)
 	}
 }
 

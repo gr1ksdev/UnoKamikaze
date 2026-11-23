@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gr1ksdev/UnoKamikaze/internal/game"
-	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
 	"github.com/mymmrac/telego"
 )
 
@@ -65,7 +64,7 @@ func TestBot_RunAndShutdown(t *testing.T) {
 	wantByScope := map[string][]string{
 		telego.ScopeTypeDefault:         {"start"},
 		telego.ScopeTypeAllPrivateChats: {"start", "help", "ranking", "stats"},
-		telego.ScopeTypeAllGroupChats:   groupCommandNames(groups.CommandsPT),
+		telego.ScopeTypeAllGroupChats:   groupCommandNames(),
 	}
 
 	// The global group list uses the Portuguese spelling; the per-chat override
@@ -96,7 +95,7 @@ func TestBot_RunAndShutdown(t *testing.T) {
 		Message: &telego.Message{
 			Chat: telego.Chat{ID: -10055, Type: "supergroup", Title: "UNO Group"},
 			From: &telego.User{ID: 1, FirstName: "Alice"},
-			Text: "/novo@unokamikaze",
+			Text: "/new@unokamikaze",
 		},
 	}
 
@@ -104,7 +103,7 @@ func TestBot_RunAndShutdown(t *testing.T) {
 
 	lastMsg := mockAPI.LastSentMessage()
 	if lastMsg == "" {
-		t.Errorf("expected bot to process /novo update from channel")
+		t.Errorf("expected bot to process /new update from channel")
 	}
 
 	// Cancel context to initiate graceful shutdown
@@ -175,7 +174,7 @@ func TestBot_ResetUsesRecoveryLaneAndAllowsNewGame(t *testing.T) {
 
 	create := telego.Update{UpdateID: 901, Message: &telego.Message{
 		Chat: telego.Chat{ID: int64(chatID), Type: "supergroup", Title: "Recovery"},
-		From: &telego.User{ID: ownerID}, Text: "/novo@unokamikaze",
+		From: &telego.User{ID: ownerID}, Text: "/new@unokamikaze",
 	}}
 	if !bot.submitUpdate(t.Context(), create) {
 		t.Fatal("new command was not admitted after reset")

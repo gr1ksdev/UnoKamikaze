@@ -3,7 +3,7 @@
 ## V3 — modo Caseiro único (2026-11-16)
 
 O Caseiro é o único modo do produto. O grupo não guarda mais um modo padrão e
-`/novo` ignora seus argumentos. A engine continua expondo `ClassicRules()` e
+`/new` ignora seus argumentos. A engine continua expondo `ClassicRules()` e
 `BotRules()` para os testes; apenas a superfície de produto colapsa.
 
 `CaseiroRules()` continua sendo `BotRules()` com três ajustes:
@@ -16,6 +16,25 @@ O empilhamento de `+4` sobre `+4` pendente vem do `BotRules()` e vale
 **independentemente da cor escolhida** antes: dois `+4` acumulam 8 cartas, e o
 `+4` empilhado continua contestável por blefe. Fora de uma penalidade pendente,
 `NoWildOnWild` continua impedindo coringa sobre coringa.
+
+### Atualização — decisão da vítima na troca (2026-11-23)
+
+A troca de mãos não é mais resolvida inteiramente em `ChooseColor`. Com alvo
+selecionado, a cor abre a fase `BlockingSwap` e a vítima decide fora da vez:
+
+- `PassHand` — entrega as próprias cartas; a engine completa a transferência
+  atômica com a cor já escolhida e emite `HandsPassed` + `HandsSwapped`.
+- `BlockSwap` — exige o 🚫 (`Skip`) da cor escolhida na mão da vítima; a carta
+  vai para o descarte, a troca é cancelada, a cor permanece e `SkipNextFor`
+  faz a vítima perder a próxima vez em que a vez chegaria nela. Se for a última
+  carta, a vitória normal prevalece.
+- `AllowSwap` — saída de timeout, também completa a troca; ninguém fica preso.
+
+A janela abre sempre que há alvo, mesmo sem o 🚫 na mão da vítima. O prazo usa
+o timeout de turno; a saída da vítima cancela a transferência e retoma o turno
+após o autor. As revisões continuam estritas: jogar `r+1`, alvo/manter `r+2`,
+cor `r+3`, decisão `r+4`. Nenhum evento nem view pública revela as cartas da
+vítima durante a janela.
 
 ## Atualização — apresentação e empilhamento Caseiro (2026-09-25)
 
@@ -60,7 +79,7 @@ registram o contrato inicial e não substituem as regras atuais dos modos do bot
 - Em `TakingTurn`, o tempo do jogador começa em `TURN_TIMEOUT` e perde
   `SKIP_TIME_PENALTY` a cada pulo, com piso de `MIN_TURN_TIME`. O pulo obriga o
   pulado a comprar uma carta (baralho vazio: apenas avança) e o jogador continua
-  na partida. Qualquer participante pode pedir `/pular`, mas terceiros só depois
+  na partida. Qualquer participante pode pedir `/skip`, mas terceiros só depois
   do prazo; o jogador da vez pode se pular quando quiser. Administradores não
   têm atalho. Uma ação válida do jogador zera a penalidade acumulada.
 - `HandsSwapped` só é emitido na transferência real; `HandKept` distingue a opção
@@ -190,7 +209,7 @@ quantidade disponível antes de executar. Se nem a reciclagem puder satisfazer a
 compra, `ErrDeckEmpty` preserva a ação inteira. Não há compra parcial nem criação de
 cartas. Essa política explícita para exaustão total também vale para +2, escolha
 após +4, distribuição e entrada tardia. Num estado sem cartas suficientes, pode
-ser necessário sair/cancelar pela camada de aplicação; a engine não inventa uma
+ser necessário sair/kill pela camada de aplicação; a engine não inventa uma
 regra de empate nem um baralho novo. A pendência após +4 continua recuperável.
 
 ## Eventos e privacidade

@@ -13,6 +13,9 @@ const (
 	ChoosingColor
 	Finished
 	ChoosingPlayer
+	// BlockingSwap is the short decision window after the swap colour is
+	// chosen when the target holds the Skip card of that colour.
+	BlockingSwap
 )
 
 type FinishReason string
@@ -28,6 +31,7 @@ const (
 type ColorChoice struct {
 	SwapHands             bool     // Resolve optional SwapHands only when the color is accepted.
 	SwapTarget            PlayerID // Zero means explicitly keeping the actor's hand.
+	ChosenColor           Color    // Set while BlockingSwap waits for the target's decision.
 	Actor                 PlayerID
 	Target                PlayerID
 	PreviousColor         Color
@@ -67,8 +71,11 @@ type State struct {
 	Pending               *ColorChoice
 	PendingBluff          *BluffInfo
 	DrawFourChallengeable bool
-	Placements            []Placement
-	FinishReason          FinishReason
+	// SkipNextFor banks the self-skip paid by a player who blocked a swap.
+	// It is consumed the next time the turn would reach that player.
+	SkipNextFor  PlayerID
+	Placements   []Placement
+	FinishReason FinishReason
 }
 
 func (s State) clone() State {
@@ -140,7 +147,7 @@ func (s *State) next(id PlayerID, steps int) PlayerID {
 // Validate checks structural invariants for tests, debug and recovery.
 func (s State) Validate() error {
 	bad := func(message string) error { return fmt.Errorf("%w: %s", ErrInvalidState, message) }
-	if s.ID == "" || s.Phase > ChoosingPlayer || (s.Direction != 1 && s.Direction != -1) || s.DrawCounter < 0 {
+	if s.ID == "" || s.Phase > BlockingSwap || (s.Direction != 1 && s.Direction != -1) || s.DrawCounter < 0 {
 		return bad("identity, phase, direction or draw counter")
 	}
 	if s.Rules.EndPolicy > Placements {
@@ -227,7 +234,7 @@ func (s State) Validate() error {
 			}
 		}
 	}
-	if s.Phase == TakingTurn || s.Phase == ChoosingColor || s.Phase == ChoosingPlayer {
+	if s.Phase == TakingTurn || s.Phase == ChoosingColor || s.Phase == ChoosingPlayer || s.Phase == BlockingSwap {
 		if len(s.Order) < 2 || !order[s.CurrentPlayerID] || len(s.DiscardPile) == 0 {
 			return bad("active game")
 		}
@@ -265,8 +272,11 @@ func (s State) Validate() error {
 			return bad("pending player choice")
 		}
 	}
-	if (s.Phase == ChoosingColor) != (s.Pending != nil) {
+	if (s.Phase == ChoosingColor || s.Phase == BlockingSwap) != (s.Pending != nil) {
 		return bad("pending color phase")
+	}
+	if s.SkipNextFor != 0 && !slices.Contains(s.Order, s.SkipNextFor) {
+		return bad("banked skip seat")
 	}
 	if p := s.Pending; p != nil {
 		if p.Actor != s.CurrentPlayerID || !order[p.Actor] || !order[p.Target] || p.Target != s.next(p.Actor, 1) {
@@ -287,13 +297,24 @@ func (s State) Validate() error {
 				return bad("pending swap target")
 			}
 		}
+		if s.Phase == BlockingSwap {
+			if !p.SwapHands || p.SwapTarget == 0 || !p.ChosenColor.valid() {
+				return bad("pending swap block")
+			}
+		} else if p.ChosenColor != NoColor {
+			return bad("chosen color outside block window")
+		}
 		if p.Initial && (top.Rank != Wild || p.PreviousColor != NoColor) {
 			return bad("initial wild")
 		}
 		if !p.Initial && !p.PreviousColor.valid() {
 			return bad("previous color")
 		}
-		if s.ActiveColor != p.PreviousColor {
+		wantColor := p.PreviousColor
+		if s.Phase == BlockingSwap {
+			wantColor = p.ChosenColor
+		}
+		if s.ActiveColor != wantColor {
 			return bad("pending active color")
 		}
 	}
@@ -303,7 +324,7 @@ func (s State) Validate() error {
 			return bad("drawn card")
 		}
 	}
-	if len(s.DiscardPile) != 0 && s.Phase != ChoosingColor {
+	if len(s.DiscardPile) != 0 && s.Phase != ChoosingColor && s.Phase != BlockingSwap {
 		top := inventory[s.DiscardPile[len(s.DiscardPile)-1]]
 		if top.Rank >= Wild && !s.ActiveColor.valid() && !(s.Phase == Finished && s.FinishReason != FinishedNormally && s.ActiveColor == NoColor && top.Rank == Wild) {
 			return bad("wild active color")

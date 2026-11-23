@@ -254,7 +254,7 @@ func authorize(entry *managedGame, actor Actor, kind uno.ActionType) error {
 		if actor.ChatID == 0 || (!actor.ChatAdmin && actor.PlayerID != entry.ownerID && actor.PlayerID != entry.creatorID) {
 			return ErrForbidden
 		}
-	case uno.PlayCard, uno.DrawCard, uno.PassTurn, uno.ChooseColor, uno.ChoosePlayer, uno.KeepHand, uno.CallBluff:
+	case uno.PlayCard, uno.DrawCard, uno.PassTurn, uno.ChooseColor, uno.ChoosePlayer, uno.KeepHand, uno.CallBluff, uno.BlockSwap, uno.AllowSwap, uno.PassHand:
 		// Inline actions have no chat context. The engine still validates the actor.
 	case uno.ForceSkipTurn, uno.KickPlayer:
 		// Administrative actions over the running game: the owner of the game
@@ -348,6 +348,9 @@ type ExpiredTurn struct {
 	ChatID   ChatID
 	PlayerID uno.PlayerID
 	Revision uint64
+	// Block is true for a pending swap-block decision. The deadline expires
+	// into AllowSwap instead of a penalty skip.
+	Block bool
 }
 
 // ExpiredTurns discovers candidates without changing any game. Adapters must

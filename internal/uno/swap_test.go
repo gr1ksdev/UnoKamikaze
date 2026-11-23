@@ -49,7 +49,8 @@ func TestSwapHandsAtomicChoiceAndTurn(t *testing.T) {
 		if selected.Phase != ChoosingColor || !reflect.DeepEqual(selected.Players, pending.Players) || selected.CurrentPlayerID != 1 {
 			t.Fatal("selection applied effects early")
 		}
-		r := apply(t, g, Action{Type: ChooseColor, PlayerID: 1, Color: Red})
+		apply(t, g, Action{Type: ChooseColor, PlayerID: 1, Color: Red})
+		r := apply(t, g, Action{Type: PassHand, PlayerID: 2})
 		after := g.Snapshot()
 		if !slices.Equal(after.Players[0].Hand, before.Players[1].Hand) || !slices.Equal(after.Players[1].Hand, before.Players[0].Hand[1:]) || !slices.Equal(after.Players[2].Hand, before.Players[2].Hand) {
 			t.Fatal("hands not swapped exactly")
@@ -128,7 +129,8 @@ func TestSwapHandsLifecycleAndUNO(t *testing.T) {
 		g := swapScenario(t)
 		apply(t, g, Action{Type: PlayCard, PlayerID: 1, CardID: g.state.Players[0].Hand[0]})
 		apply(t, g, Action{Type: ChoosePlayer, PlayerID: 1, TargetID: 3})
-		r := apply(t, g, Action{Type: ChooseColor, PlayerID: 1, Color: Red})
+		apply(t, g, Action{Type: ChooseColor, PlayerID: 1, Color: Red})
+		r := apply(t, g, Action{Type: PassHand, PlayerID: 3})
 		if !hasEvent(r, UnoAnnounced, 1) || !hasEvent(r, UnoAnnounced, 3) {
 			t.Fatal(r)
 		}
@@ -234,6 +236,7 @@ func TestDrawnSwapAndFollowingColorMatch(t *testing.T) {
 	}
 	apply(t, g, Action{Type: ChoosePlayer, PlayerID: 1, TargetID: 2})
 	apply(t, g, Action{Type: ChooseColor, PlayerID: 1, Color: Red})
+	apply(t, g, Action{Type: PassHand, PlayerID: 2})
 	// Player 2 received a blue card, so cannot match the retained red color.
 	if err := g.CanPlay(2, g.state.Players[1].Hand[0]); !errors.Is(err, ErrCardNotPlayable) {
 		t.Fatal(err)

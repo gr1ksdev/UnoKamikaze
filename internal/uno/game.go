@@ -83,7 +83,7 @@ func (g *Game) apply(a Action) (Result, error) {
 	if g.state.Revision == math.MaxUint64 {
 		return Result{}, ErrInvalidState
 	}
-	if a.PlayerID <= 0 || a.Type < JoinGame || a.Type > PenaltySkip {
+	if a.PlayerID <= 0 || a.Type < JoinGame || a.Type > PassHand {
 		return Result{}, ErrInvalidAction
 	}
 	if (a.Type != PlayCard && a.CardID != "") || (a.Type != ChooseColor && a.Color != NoColor) || (a.Type != StartGame && a.DealerID != 0) || (a.Type != ChoosePlayer && a.Type != KickPlayer && a.TargetID != 0) {
@@ -221,6 +221,19 @@ func (g *Game) leave(s *State, id PlayerID, events *[]Event) error {
 			recordLast(s)
 		}
 		finish(s, FinishedByDeparture, events)
+		return nil
+	}
+	if s.Phase == BlockingSwap && s.Pending != nil && s.Pending.SwapTarget == id {
+		// The target left instead of deciding: cancel the transfer, keep the
+		// colour already chosen and resume the turn after the swapper.
+		color, actor := s.Pending.ChosenColor, s.Pending.Actor
+		s.Pending = nil
+		s.ActiveColor = color
+		s.Phase = TakingTurn
+		if s.SkipNextFor == id {
+			s.SkipNextFor = 0
+		}
+		changeTurn(s, s.next(actor, 1), events)
 		return nil
 	}
 	if s.Pending != nil && s.Pending.SwapHands && s.Pending.SwapTarget == id {
@@ -378,6 +391,26 @@ func (g *Game) takeAction(s *State, a Action, events *[]Event) error {
 			return ErrUnknownPlayer
 		}
 		return g.leave(s, a.TargetID, events)
+	}
+	if s.Phase == BlockingSwap {
+		// The target decides out of turn: blocking is a reaction to the
+		// swapper's colour choice, not the target's normal turn.
+		if a.Type != BlockSwap && a.Type != AllowSwap && a.Type != PassHand {
+			return ErrSwapBlockRequired
+		}
+		if s.Pending == nil || !s.Pending.SwapHands || s.Pending.SwapTarget == 0 {
+			return ErrInvalidState
+		}
+		if a.PlayerID != s.Pending.SwapTarget {
+			return ErrNotYourTurn
+		}
+		if a.Type == BlockSwap {
+			return g.blockSwap(s, a, events)
+		}
+		if a.Type == PassHand {
+			*events = append(*events, Event{Type: HandsPassed, PlayerID: a.PlayerID, TargetID: s.Pending.Actor})
+		}
+		return g.resolveChoice(s, *s.Pending, s.Pending.ChosenColor, events)
 	}
 	if a.PlayerID != s.CurrentPlayerID {
 		return ErrNotYourTurn
@@ -656,6 +689,57 @@ func (g *Game) choose(s *State, color Color, events *[]Event) error {
 		return ErrInvalidColor
 	}
 	pending := *s.Pending
+	if pending.SwapHands && pending.SwapTarget != 0 {
+		// Every swap pauses here: the target hands over their cards manually,
+		// or spends the Skip of the chosen colour to cancel. Timeout resolves
+		// it automatically if the target does not decide.
+		s.Pending.ChosenColor = color
+		s.ActiveColor = color
+		s.Phase = BlockingSwap
+		*events = append(*events, Event{Type: SwapBlockRequired, PlayerID: pending.SwapTarget, TargetID: pending.Actor, Color: color})
+		return nil
+	}
+	return g.resolveChoice(s, pending, color, events)
+}
+
+// blockSwap spends the target's Skip and cancels the transfer. The Skip is
+// discarded under the swap card, the colour stands and the turn resumes where
+// it would have gone after the swap. The target also loses its next turn.
+func (g *Game) blockSwap(s *State, a Action, events *[]Event) error {
+	pending := *s.Pending
+	victim := s.player(a.PlayerID)
+	if victim == nil || victim.Status != Playing {
+		return ErrUnknownPlayer
+	}
+	index := -1
+	for i, id := range victim.Hand {
+		if card, ok := s.card(id); ok && card.Rank == Skip && card.Color == pending.ChosenColor {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return ErrBlockCardMissing
+	}
+	cardID := victim.Hand[index]
+	victim.Hand = slices.Delete(victim.Hand, index, index+1)
+	s.DiscardPile = append(s.DiscardPile, cardID)
+	if len(victim.Hand) > 0 {
+		s.SkipNextFor = a.PlayerID
+	}
+	s.ActiveColor = pending.ChosenColor
+	s.Pending = nil
+	s.Phase = TakingTurn
+	*events = append(*events,
+		Event{Type: CardPlayed, PlayerID: a.PlayerID, CardID: cardID},
+		Event{Type: SwapBlocked, PlayerID: a.PlayerID, TargetID: pending.Actor},
+		Event{Type: ColorChosen, PlayerID: pending.Actor, Color: pending.ChosenColor},
+	)
+	completePlay(s, a.PlayerID, pending.Target, events)
+	return nil
+}
+
+func (g *Game) resolveChoice(s *State, pending ColorChoice, color Color, events *[]Event) error {
 	if pending.SwapHands {
 		if pending.SwapTarget != 0 {
 			if err := g.swapHands(s, pending.SwapTarget, events); err != nil {
@@ -714,6 +798,9 @@ func (g *Game) penalty(s *State, player PlayerID, count int, events *[]Event) er
 func completePlay(s *State, actor, next PlayerID, events *[]Event) {
 	p := s.player(actor)
 	if len(p.Hand) == 0 {
+		if s.SkipNextFor == actor {
+			s.SkipNextFor = 0
+		}
 		fallback := s.next(actor, 1)
 		p.Status = WentOut
 		s.Placements = append(s.Placements, Placement{PlayerID: actor, Position: len(s.Placements) + 1, WentOut: true})
@@ -739,6 +826,11 @@ func recordLast(s *State) {
 }
 
 func changeTurn(s *State, player PlayerID, events *[]Event) {
+	if s.SkipNextFor != 0 && player == s.SkipNextFor {
+		s.SkipNextFor = 0
+		*events = append(*events, Event{Type: PlayerSkipped, PlayerID: player, Reason: "block"})
+		player = s.next(player, 1)
+	}
 	s.CurrentPlayerID = player
 	s.DrawnCardID = ""
 	*events = append(*events, Event{Type: TurnChanged, PlayerID: player})
@@ -751,6 +843,7 @@ func finish(s *State, reason FinishReason, events *[]Event) {
 	s.Pending = nil
 	s.PendingBluff = nil
 	s.DrawFourChallengeable = false
+	s.SkipNextFor = 0
 	s.FinishReason = reason
 	*events = append(*events, Event{Type: GameFinished, Reason: reason})
 }

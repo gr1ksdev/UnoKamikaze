@@ -26,6 +26,15 @@ const (
 	// player. Any active participant may request it; the application enforces
 	// the waiting-time rule before submitting the action.
 	PenaltySkip
+	// BlockSwap is the target's refusal of a pending hand swap, paid with the
+	// Skip card of the colour chosen by the swapper.
+	BlockSwap
+	// AllowSwap accepts a pending hand swap on timeout. The engine completes
+	// the transfer with the colour already chosen by the swapper.
+	AllowSwap
+	// PassHand is the target's manual decision to hand over their cards. The
+	// engine completes the swap with the colour already chosen by the swapper.
+	PassHand
 )
 
 // Action uses only domain IDs. The application authenticates PlayerID and

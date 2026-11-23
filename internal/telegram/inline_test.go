@@ -912,7 +912,7 @@ func TestRejectedPlayPostsOnlyTheGameState(t *testing.T) {
 	if strings.Contains(msg, "não aceita") || strings.Contains(msg, "não é a vez") {
 		t.Fatalf("rejection still exposes an error lecture: %s", msg)
 	}
-	// It must be the same projection as /estado, not just the turn line.
+	// It must be the same projection as /state, not just the turn line.
 	for _, want := range []string{"🃏 Topo:", "\n\nVez de:", "\n👥 ", "(7) →"} {
 		if !strings.Contains(msg, want) {
 			t.Fatalf("rejection missing %q: %s", want, msg)

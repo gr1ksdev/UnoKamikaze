@@ -26,11 +26,11 @@ func administrationFixtureWithPolicy(t *testing.T, policy game.TurnPolicy) (*Com
 	h := NewCommandHandler(api, svc, NewRenderer(NewUserCache(100)), NewTokenStore(100, 10, time.Now, nil), "unokamikaze", nil)
 
 	chat := telego.Chat{ID: -700, Type: "supergroup", Title: "Sala Admin"}
-	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/novo@unokamikaze"})
+	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/new@unokamikaze"})
 	for _, id := range []int64{1, 2, 3} {
-		h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: id, FirstName: "Jogador"}, Text: "/entrar@unokamikaze"})
+		h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: id, FirstName: "Jogador"}, Text: "/join@unokamikaze"})
 	}
-	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/iniciar@unokamikaze"})
+	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/start@unokamikaze"})
 
 	summary, err := svc.FindChatGame(t.Context(), -700)
 	if err != nil {
@@ -49,7 +49,7 @@ func TestPularAdvancesTheTurnForTheCurrentPlayer(t *testing.T) {
 	h.HandleMessage(t.Context(), &telego.Message{
 		Chat: telego.Chat{ID: -700, Type: "supergroup"},
 		From: &telego.User{ID: int64(before), FirstName: "Da vez"},
-		Text: "/pular@unokamikaze",
+		Text: "/skip@unokamikaze",
 	})
 	after, err := svc.PublicView(t.Context(), view.GameID)
 	if err != nil {
@@ -72,7 +72,7 @@ func TestPularIsRefusedBeforeTheDeadline(t *testing.T) {
 	h.HandleMessage(t.Context(), &telego.Message{
 		Chat: telego.Chat{ID: -700, Type: "supergroup"},
 		From: &telego.User{ID: 3, FirstName: "Comum"},
-		Text: "/pular@unokamikaze",
+		Text: "/skip@unokamikaze",
 	})
 	after, err := svc.PublicView(t.Context(), view.GameID)
 	if err != nil {
@@ -93,7 +93,7 @@ func TestPularIsAllowedForAnyParticipantAfterTheDeadline(t *testing.T) {
 	h.HandleMessage(t.Context(), &telego.Message{
 		Chat: telego.Chat{ID: -700, Type: "supergroup"},
 		From: &telego.User{ID: 3, FirstName: "Comum"},
-		Text: "/pular@unokamikaze",
+		Text: "/skip@unokamikaze",
 	})
 	after, err := svc.PublicView(t.Context(), view.GameID)
 	if err != nil {
@@ -113,7 +113,7 @@ func TestExpulsarRemovesTheRepliedPlayer(t *testing.T) {
 	h.HandleMessage(t.Context(), &telego.Message{
 		Chat: telego.Chat{ID: -700, Type: "supergroup"},
 		From: &telego.User{ID: 1, FirstName: "Owner"},
-		Text: "/expulsar@unokamikaze",
+		Text: "/kick@unokamikaze",
 		ReplyToMessage: &telego.Message{
 			MessageID: 7,
 			From:      &telego.User{ID: 3, FirstName: "Alvo"},
@@ -142,7 +142,7 @@ func TestExpulsarRequiresATarget(t *testing.T) {
 	h.HandleMessage(t.Context(), &telego.Message{
 		Chat: telego.Chat{ID: -700, Type: "supergroup"},
 		From: &telego.User{ID: 1, FirstName: "Owner"},
-		Text: "/expulsar@unokamikaze",
+		Text: "/kick@unokamikaze",
 	})
 	after, err := svc.PublicView(t.Context(), view.GameID)
 	if err != nil {
@@ -186,8 +186,11 @@ func TestStatsCommandReportsThePlayerHistory(t *testing.T) {
 			t.Fatalf("missing %q in caption %s", want, photo.Caption)
 		}
 	}
-	if len(api.SentMessages) != 0 {
-		t.Fatalf("unexpected text fallback: %+v", api.SentMessages)
+	if len(api.SentMessages) != 1 || !strings.Contains(api.SentMessages[0].Text, "⏳") {
+		t.Fatalf("unexpected loading message: %+v", api.SentMessages)
+	}
+	if len(api.DeletedMessages) != 1 || api.DeletedMessages[0].MessageID != 1 {
+		t.Fatalf("loading message not removed: %+v", api.DeletedMessages)
 	}
 }
 
@@ -200,9 +203,9 @@ func TestLobbyButtonStartsTheGame(t *testing.T) {
 	h := b.cmdHandler
 	chat := telego.Chat{ID: -77, Type: "supergroup", Title: "Lobby Button"}
 
-	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/novo@unokamikaze"})
-	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/entrar@unokamikaze"})
-	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 2, FirstName: "Other"}, Text: "/entrar@unokamikaze"})
+	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/new@unokamikaze"})
+	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Owner"}, Text: "/join@unokamikaze"})
+	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 2, FirstName: "Other"}, Text: "/join@unokamikaze"})
 
 	summary, err := svc.FindChatGame(t.Context(), -77)
 	if err != nil {

@@ -1,16 +1,16 @@
 package telegram
 
 import (
-	"github.com/gr1ksdev/UnoKamikaze/internal/game"
-	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
-	"github.com/mymmrac/telego"
 	"testing"
 	"time"
+
+	"github.com/gr1ksdev/UnoKamikaze/internal/game"
+	"github.com/mymmrac/telego"
 )
 
 func TestGroupCommandsRequireOwnUsername(t *testing.T) {
 	for _, chatType := range []string{"group", "supergroup"} {
-		for _, command := range []string{"/novo", "/help", "/join", "/reset", "/novo@otherbot", "/reset@otherbot"} {
+		for _, command := range []string{"/new", "/help", "/join", "/reset", "/new@otherbot", "/reset@otherbot"} {
 			api := newMockBotAPI()
 			svc, _ := game.NewService()
 			h := NewCommandHandler(api, svc, NewRenderer(nil), nil, "unokamikaze", nil)
@@ -23,66 +23,47 @@ func TestGroupCommandsRequireOwnUsername(t *testing.T) {
 		}
 	}
 }
-func TestCommandsAreLanguageScoped(t *testing.T) {
-	for _, tc := range []struct {
-		name, accepted, rejected string
-		lang                     groups.CommandLanguage
-	}{
-		{"portuguese", "/entrar@unokamikaze", "/join@unokamikaze", groups.CommandsPT},
-		{"english", "/join@unokamikaze", "/entrar@unokamikaze", groups.CommandsEN},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			api := newMockBotAPI()
-			svc, _ := game.NewService()
-			h := NewCommandHandler(api, svc, NewRenderer(NewUserCache(100)), NewTokenStore(100, 10, time.Now, nil), "unokamikaze", nil)
-			if tc.lang == groups.CommandsEN {
-				repo := newMockGroupRepo()
-				cfg, _ := repo.GetOrCreateGroupConfig(t.Context(), -10)
-				cfg.CommandLanguage = groups.CommandsEN
-				repo.configs[-10] = cfg
-				h.groupConfigs = repo
-				h.languages.repo = repo
-			}
 
-			msg := &telego.Message{Chat: telego.Chat{ID: -10, Type: "supergroup"}, From: &telego.User{ID: 1}, Text: commandName(cmdNew, tc.lang) + "@unokamikaze"}
-			h.HandleMessage(t.Context(), msg)
-			summary, err := svc.FindChatGame(t.Context(), -10)
-			if err != nil {
-				t.Fatal(err)
-			}
+func TestGroupCommandsAreEnglishOnly(t *testing.T) {
+	api := newMockBotAPI()
+	svc, _ := game.NewService()
+	h := NewCommandHandler(api, svc, NewRenderer(NewUserCache(100)), NewTokenStore(100, 10, time.Now, nil), "unokamikaze", nil)
+	msg := &telego.Message{Chat: telego.Chat{ID: -10, Type: "supergroup"}, From: &telego.User{ID: 1}, Text: commandName(cmdNew) + "@unokamikaze"}
+	h.HandleMessage(t.Context(), msg)
+	summary, err := svc.FindChatGame(t.Context(), -10)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-			// The other language is silently ignored.
-			msg.Text = tc.rejected
-			msg.From = &telego.User{ID: 2}
-			h.HandleMessage(t.Context(), msg)
-			view, _ := svc.PublicView(t.Context(), summary.GameID)
-			if len(view.Players) != 0 {
-				t.Fatalf("%s was accepted in %s group", tc.rejected, tc.name)
-			}
+	// The old Portuguese spelling is silently ignored.
+	msg.Text = "/entrar@unokamikaze"
+	msg.From = &telego.User{ID: 2}
+	h.HandleMessage(t.Context(), msg)
+	view, _ := svc.PublicView(t.Context(), summary.GameID)
+	if len(view.Players) != 0 {
+		t.Fatal("Portuguese command was accepted")
+	}
 
-			// The configured language works.
-			msg.Text = tc.accepted
-			h.HandleMessage(t.Context(), msg)
-			view, _ = svc.PublicView(t.Context(), summary.GameID)
-			if len(view.Players) != 1 || view.Players[0].ID != 2 {
-				t.Fatalf("%s failed in %s group", tc.accepted, tc.name)
-			}
-		})
+	msg.Text = "/join@unokamikaze"
+	h.HandleMessage(t.Context(), msg)
+	view, _ = svc.PublicView(t.Context(), summary.GameID)
+	if len(view.Players) != 1 || view.Players[0].ID != 2 {
+		t.Fatal("English command was refused")
 	}
 }
+
 func TestPrivateCommandsStillAllowBare(t *testing.T) {
 	api := newMockBotAPI()
 	svc, _ := game.NewService()
 	h := NewCommandHandler(api, svc, NewRenderer(nil), nil, "unokamikaze", nil)
-	for _, command := range []string{"/start", "/ajuda"} {
+	for _, command := range []string{"/start", "/help"} {
 		h.HandleMessage(t.Context(), &telego.Message{Chat: telego.Chat{ID: 1, Type: "private"}, From: &telego.User{ID: 1}, Text: command})
 	}
 	if len(api.SentMessages) != 2 {
 		t.Fatal("private commands require username")
 	}
-	// English spelling is not a cross-language alias.
-	h.HandleMessage(t.Context(), &telego.Message{Chat: telego.Chat{ID: 1, Type: "private"}, From: &telego.User{ID: 1}, Text: "/help"})
+	h.HandleMessage(t.Context(), &telego.Message{Chat: telego.Chat{ID: 1, Type: "private"}, From: &telego.User{ID: 1}, Text: "/ajuda"})
 	if len(api.SentMessages) != 2 {
-		t.Fatal("cross-language alias was accepted in private chat")
+		t.Fatal("Portuguese command alias was accepted in private chat")
 	}
 }

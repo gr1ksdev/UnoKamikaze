@@ -1,5 +1,20 @@
 # UnoKamikaze V2 — Telegram Adapter (Milestone 3)
 
+## Atualizações v3 (2026-11-23, homologação pendente)
+
+- **Comandos ingleses, textos portugueses.** O menu do Telegram é registrado
+  nos escopos default/privado/grupo apenas com nomes ingleses e descrições em
+  português; não há mais override por chat nem comandos em português.
+- **Troca de mãos com decisão da vítima.** Ao escolher alvo e cor da 🔀, o grupo
+  recebe `🎨 Escolhendo a cor...` + `Vez de:`. A vítima abre `@bot` e vê o sticker
+  de passar (`PassHand`) primeiro, as cartas próprias em stickers — o 🚫 da cor
+  bloqueia (`BlockSwap`) — e as demais em cinza. A janela é silenciosa no grupo
+  quanto à mão da vítima: o turno anunciado é o do próximo jogador. O timeout
+  completa a troca (`AllowSwap`).
+- **`/stats` com pré-carregamento.** O comando recebe `⏳ Gerando seu card...`
+  em resposta; a mensagem é apagada quando o card (ou fallback) chega. Card e
+  aviso respondem ao mesmo comando, e o `file_id` em cache evita reupload.
+
 ## Resultado e ranking acumulado (2026-09-29, dev; homologação pendente)
 
 Depois do commit de uma partida pontuada, são enviadas duas mensagens independentes:
@@ -55,8 +70,8 @@ Nenhuma publicação ou deploy faz parte desta entrega.
 
 ## Gameplay UX Polish (2026-09-26, somente dev)
 
-- `/trancar` e `/destrancar`: controle exclusivo do responsável, incluindo owner
-  observador, no lobby ou durante a partida; respostas idempotentes. `/entrar`
+- `/close` e `/open`: controle exclusivo do responsável, incluindo owner
+  observador, no lobby ou durante a partida; respostas idempotentes. `/join`
   recusa sala trancada sem efeitos. Ajuda e registro de comandos incluem ambos.
 - Estado compacto: topo, cor somente para cartas sem cor própria, compra acumulada,
   classificação, ação atual e ordem ativa. Classificação usa medalhas nos três
@@ -69,7 +84,7 @@ Nenhuma publicação ou deploy faz parte desta entrega.
   ambos os sentidos, Reverse, placements, várias entradas e preservação do turno.
 - Inline, tokens, revisões, regras dos modos e Trocar cartas permanecem inalterados.
 
-Aceite real pendente: conferir late join em ambos os sentidos, trancar/destrancar
+Aceite real pendente: conferir late join em ambos os sentidos, trancar/open
 no lobby e durante partida, links, Wild/+4, efeitos, placements, escolha de alvo
 e encerramento com dois jogadores. Testes automáticos não substituem esse aceite.
 
@@ -130,7 +145,7 @@ privadas, tópicos de fórum e remetentes anônimos são recusados explicitament
 Após a autorização, o dispatcher cancela o contexto da geração anterior daquele
 chat e incrementa sua geração. Tarefas antigas que ainda estejam nas filas são
 descartadas antes da execução. Uma fila dedicada e limpa passa a atender o grupo,
-permitindo `/novo` imediatamente mesmo se o shard antigo continuar ocupado. O
+permitindo `/new` imediatamente mesmo se o shard antigo continuar ocupado. O
 serviço remove a partida ativa, os índices de participantes e todo histórico do
 chat; o TokenStore invalida os tokens de cada partida removida. Outros chats não
 são interrompidos.
@@ -163,7 +178,7 @@ O scheduler descobre candidatos sem mutação e executa AutoSkip + mensagem dent
 da fila do chat. Isso impede a publicação tardia de um turno obsoleto após vitória.
 O mesmo código é usado por polling e webhook. O aviso de pulo é curto — quem foi
 pulado, o tempo restante e `Vez de:` — sem `🃏 Topo:` nem a ordem com contagens,
-que pertencem exclusivamente a `/estado`. O tick de descoberta acompanha o piso
+que pertencem exclusivamente a `/state`. O tick de descoberta acompanha o piso
 `MIN_TURN_TIME`, não o timeout cheio, para não perder prazos já degradados.
 
 ### O contexto não é mais visível
@@ -306,11 +321,11 @@ O UnoKamikaze V2 é executado via `./cmd/bot` e consome diretamente a camada de 
   - `/start` envia boas-vindas, uma descrição curta e um botão para adicionar o
     bot a grupos usando `https://t.me/<username>?startgroup=true`.
   - O username vem de `GetMe`; não há nome de bot fixo no texto nem no link.
-  - O payload de grupo `/start@bot true` confirma a adição e orienta `/novo` e
+  - O payload de grupo `/start@bot true` confirma a adição e orienta `/new` e
     `/help`, sem tentar iniciar uma partida inexistente. `/start` sem payload
-    continua como alias compatível de `/iniciar` nos grupos.
-  - `/help` lista comandos em blockquote, mantém `/ajuda` como alias e registra a
-    origem brasileira baseada no `@unopybot`.
+    inicia a partida nos grupos.
+  - `/help` lista os comandos em blockquote com nomes ingleses e textos em
+    português, e registra a origem brasileira baseada no `@unopybot`.
 - **Particionamento por ChatID**:
   - 8 workers com canais de capacidade 128 dedicados às mensagens, comandos e confirmações de ações agrupados pelo `ChatID`.
   - Garante ordem estrita de execução para a mesma partida, eliminando condições de corrida entre comandos e jogadas.
@@ -396,15 +411,15 @@ Quando `cache_time` é 0, o encoder padrão omite o campo, fazendo o Telegram ad
    Verificar no log: `connected to telegram bot`, `started long polling updates`.
 
 2. **Lobby e Inscrição (Grupo A)**:
-   - Jogador 1 (Owner) digita: `/novo`
+   - Jogador 1 (Owner) digita: `/new`
      - Verificar: O bot responde com a mensagem de lobby, indicando Jogador 1 como responsável e 0 jogadores inscritos.
-   - Jogador 2 digita: `/entrar`
+   - Jogador 2 digita: `/join`
      - Verificar: O bot atualiza o lobby com 1/10 jogadores inscritos.
-   - Jogador 3 digita: `/entrar`
+   - Jogador 3 digita: `/join`
      - Verificar: O bot atualiza o lobby com 2/10 jogadores inscritos.
-   - Jogador 2 tenta `/iniciar`
+   - Jogador 2 tenta `/start`
      - Verificar: O bot recusa informando que apenas o responsável (Jogador 1) pode iniciar.
-   - Jogador 1 digita: `/iniciar`
+   - Jogador 1 digita: `/start`
      - Verificar: O bot anuncia o início da partida, exibe a carta do topo, o jogador da vez e anexa os botões `🃏 Suas cartas` e `🔄 Atualizar estado`.
 
 3. **Fluxo de Jogada via Inline**:
@@ -432,7 +447,7 @@ Quando `cache_time` é 0, o encoder padrão omite o campo, fazendo o Telegram ad
      - Verificar: O bot recusa a jogada informando "Seleção antiga: a partida mudou. Abra Suas cartas novamente.", sem alterar o estado do jogo.
 
 6. **Multi-grupo**:
-   - No Grupo B, criar outra partida com `/novo`.
+   - No Grupo B, criar outra partida com `/new`.
    - Um participante do Grupo A que também está no Grupo B digita apenas `@usernamebot` (sem `g_<id>`):
      - Verificar: O bot lista os dois grupos disponíveis para o jogador escolher qual mão abrir.
 
@@ -469,6 +484,6 @@ Mantenha uma única instância e nenhum processo local/remoto usando o mesmo tok
 
 ## Endereçamento de comandos em grupos
 
-Comandos em grupos e supergrupos exigem `@username` do bot, com comparação sem distinção de maiúsculas/minúsculas. O idioma é configurado por grupo em `/config`: grupos em português aceitam `/entrar@SeuBot`, grupos em inglês aceitam `/join@SeuBot` — não há aliases cruzados. `/reset` também exige destinatário antes de entrar na recovery lane. Comandos sem sufixo ou dirigidos a outro bot são ignorados; callbacks e consultas inline mantêm seu fluxo. No privado, comandos sem sufixo continuam aceitos.
+Comandos em grupos e supergrupos exigem `@username` do bot, com comparação sem distinção de maiúsculas/minúsculas. Os nomes são **sempre ingleses** em todos os grupos (`/join@SeuBot`, `/new@SeuBot`…); as grafias portuguesas antigas são ignoradas. `/reset` também exige destinatário antes de entrar na recovery lane. Comandos sem sufixo ou dirigidos a outro bot são ignorados; callbacks e consultas inline mantêm seu fluxo. No privado, comandos sem sufixo continuam aceitos, também em inglês. As descrições do menu e todas as mensagens permanecem em português.
 
 Novas configurações de grupo passaram a usar ranking Colocação (valor interno `updated`). A migration 0008 alterou somente o DEFAULT SQL, sem converter grupos existentes nem alterar pontos.

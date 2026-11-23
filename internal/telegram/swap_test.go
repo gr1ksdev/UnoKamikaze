@@ -195,13 +195,19 @@ func TestSwapInlineFlowExchangesHandsAndRejectsOldSelection(t *testing.T) {
 		t.Fatalf("expected hand preview and four colours, got %d results", len(colorResults))
 	}
 	preview, ok := colorResults[0].(*telego.InlineQueryResultArticle)
-	if !ok || preview.Title != "🃏 Sua nova mão — escolha a cor:" {
-		t.Fatalf("missing new-hand preview: %+v", colorResults[0])
+	if !ok || preview.Title != "Cartas (toque para estado do jogo):" {
+		t.Fatalf("missing hand summary: %+v", colorResults[0])
 	}
-	for _, cv := range before.Hand {
-		if !strings.Contains(preview.Description, CardRepr(cv.Card)) {
-			t.Fatalf("preview missing incoming card %s: %q", CardRepr(cv.Card), preview.Description)
-		}
+	chooserView, err := svc.PlayerView(t.Context(), game.Actor{PlayerID: actor}, view.GameID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var expected []string
+	for _, cv := range sortHand(chooserView.Hand) {
+		expected = append(expected, CardRepr(cv.Card))
+	}
+	if preview.Description != strings.Join(expected, ", ") {
+		t.Fatalf("hand summary is not the chooser's own hand: %q", preview.Description)
 	}
 	var colorToken string
 	for _, result := range colorResults {
@@ -215,6 +221,27 @@ func TestSwapInlineFlowExchangesHandsAndRejectsOldSelection(t *testing.T) {
 	}
 	b.inlineHandler.HandleChosenInlineResult(t.Context(), &telego.ChosenInlineResult{ResultID: colorToken, From: telego.User{ID: int64(actor)}})
 	flushChat(t, b, view.ChatID)
+	// When the target happens to hold the Skip of the chosen colour the swap
+	// pauses for its decision. Permit it here so this test keeps exercising the
+	// transfer path; the counterweight has its own dedicated test.
+	awaiting, err := svc.PublicView(t.Context(), view.GameID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if awaiting.Phase == uno.BlockingSwap {
+		allowResults, _ := b.inlineHandler.buildPlayerHandResults(t.Context(), other, view.GameID, "")
+		var allowToken string
+		for _, result := range allowResults {
+			if sticker, ok := result.(*telego.InlineQueryResultCachedSticker); ok && sticker.StickerFileID == Stickers["option_pass"] {
+				allowToken = sticker.ID
+			}
+		}
+		if allowToken == "" {
+			t.Fatal("missing allow token")
+		}
+		b.inlineHandler.HandleChosenInlineResult(t.Context(), &telego.ChosenInlineResult{ResultID: allowToken, From: telego.User{ID: int64(other)}})
+		flushChat(t, b, view.ChatID)
+	}
 	final, err := svc.PublicView(t.Context(), view.GameID)
 	if err != nil {
 		t.Fatal(err)

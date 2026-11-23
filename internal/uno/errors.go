@@ -28,4 +28,6 @@ var (
 	ErrAlreadyDrawn         = errors.New("already drawn this turn")
 	ErrCannotPass           = errors.New("draw before passing")
 	ErrDeckEmpty            = errors.New("not enough drawable cards")
+	ErrSwapBlockRequired    = errors.New("swap block decision required")
+	ErrBlockCardMissing     = errors.New("skip card of the chosen color is not in hand")
 )

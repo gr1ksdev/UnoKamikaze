@@ -76,6 +76,8 @@ func readyToFinish(t *testing.T, svc *game.Service, chat game.ChatID, rules uno.
 			if len(pv.Hand) == 0 {
 				return view, action
 			}
+		} else if view.Phase == uno.BlockingSwap {
+			action.Type, action.PlayerID = uno.AllowSwap, view.BlockTargetID
 		} else {
 			for _, cv := range pv.Hand {
 				if cv.Playable {

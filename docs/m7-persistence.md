@@ -3,6 +3,11 @@
 Revisão: 2026-09-27, branch `dev`.
 Status: **CONCLUÍDA E HOMOLOGADA NO TELEGRAM REAL** (import antigo adiado / DEFERRED).
 
+> Documento histórico da M7. Os nomes de comando abaixo (`/novo`, `/config`,
+> `/sair`…) são daquela milestone. Na v3 os comandos são **somente ingleses**
+> (`/new`, `/settings`, `/leave`…) e `/settings` controla apenas o ranking;
+> veja `project-status.md` e `v2-telegram.md` para o estado atual.
+
 ## Commits desta implementação
 
 | Commit | Escopo |

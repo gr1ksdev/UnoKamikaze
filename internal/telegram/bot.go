@@ -52,7 +52,6 @@ type Bot struct {
 	cbHandler        *CallbackHandler
 	inlineHandler    *InlineHandler
 	current          *currentGameTracker
-	languages        *languageCache
 	logger           *slog.Logger
 	usernamePublic   atomic.Value
 	username         string
@@ -68,7 +67,6 @@ type Bot struct {
 func (b *Bot) SetGroupConfigs(repository groups.Repository) {
 	b.groupConfigs = repository
 	b.cmdHandler.groupConfigs = repository
-	b.languages.repo = repository
 	b.updateGroupsService()
 }
 
@@ -128,17 +126,14 @@ func New(api BotAPI, service *game.Service, tokens *TokenStore, renderer *Render
 	if renderer == nil {
 		renderer = NewRenderer(nil)
 	}
-	b := &Bot{api: api, service: service, tokens: tokens, renderer: renderer, logger: logger, turnMin: 15 * time.Second, transport: TransportConfig{Mode: TransportPolling, ListenAddr: defaultWebhookListenAddr}, dedupe: newUpdateDeduper(time.Now), retrySleep: waitContext, current: newCurrentGameTracker(), languages: newLanguageCache()}
+	b := &Bot{api: api, service: service, tokens: tokens, renderer: renderer, logger: logger, turnMin: 15 * time.Second, transport: TransportConfig{Mode: TransportPolling, ListenAddr: defaultWebhookListenAddr}, dedupe: newUpdateDeduper(time.Now), retrySleep: waitContext, current: newCurrentGameTracker()}
 	b.inlineHandler = NewInlineHandler(api, service, renderer, tokens, tokenTTL, nil, logger)
 	b.inlineHandler.current = b.current
 	b.dispatcher = NewDispatcher(logger, func(ctx context.Context, q *telego.InlineQuery) { b.inlineHandler.HandleInlineQuery(ctx, q) })
 	b.inlineHandler.dispatcher = b.dispatcher
 	b.cmdHandler = NewCommandHandler(api, service, renderer, tokens, "", logger)
 	b.cmdHandler.current = b.current
-	b.cmdHandler.languages = b.languages
 	b.cbHandler = NewCallbackHandler(api, service, renderer, tokens, logger)
-	b.cbHandler.languages = b.languages
-	b.cbHandler.applyMenu = b.applyCommandMenu
 	return b
 }
 
@@ -170,19 +165,18 @@ func (b *Bot) Run(ctx context.Context) error {
 	return b.runPolling(ctx, cfg)
 }
 func (b *Bot) registerCommands(ctx context.Context) error {
-	// The global group list is Portuguese. Groups configured for English get a
-	// higher-priority per-chat override installed when the admin changes it.
+	// Command names are English everywhere; descriptions stay Portuguese.
 	registrations := []telego.SetMyCommandsParams{
 		{
 			Commands: []telego.BotCommand{{Command: "start", Description: "Conhecer o UnoKamikaze"}},
 			Scope:    &telego.BotCommandScopeDefault{Type: telego.ScopeTypeDefault},
 		},
 		{
-			Commands: privateCommandList(groups.CommandsPT),
+			Commands: privateCommandList(),
 			Scope:    &telego.BotCommandScopeAllPrivateChats{Type: telego.ScopeTypeAllPrivateChats},
 		},
 		{
-			Commands: commandList(groups.CommandsPT),
+			Commands: commandList(),
 			Scope:    &telego.BotCommandScopeAllGroupChats{Type: telego.ScopeTypeAllGroupChats},
 		},
 	}
@@ -463,6 +457,13 @@ func (b *Bot) enqueueAutoSkip(candidate game.ExpiredTurn) bool {
 		if notify != nil {
 			b.tokens.InvalidateGame(outcome.View.GameID)
 			notify()
+			return
+		}
+		if candidate.Block {
+			// The target's window expired: the swap proceeds with the chosen
+			// colour and the group gets the normal action confirmation.
+			action := uno.Action{Type: uno.AllowSwap, PlayerID: candidate.PlayerID}
+			b.cmdHandler.reply(ctx, int64(candidate.ChatID), b.renderer.RenderActionConfirmation(candidate.PlayerID, action, outcome), makeGameButtons(outcome.View))
 			return
 		}
 		action := uno.Action{Type: uno.PenaltySkip, PlayerID: candidate.PlayerID}

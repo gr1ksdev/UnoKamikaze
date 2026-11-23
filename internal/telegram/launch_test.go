@@ -55,9 +55,9 @@ func TestNovoEntrarRoomsAreDiscoverable(t *testing.T) {
 	svc, _ := game.NewService()
 	h := NewCommandHandler(api, svc, NewRenderer(NewUserCache(100)), NewTokenStore(100, 10, time.Now, nil), "ConfiguredBot", nil)
 	chat := telego.Chat{ID: -42, Type: "supergroup", Title: "Sala real"}
-	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Conta A"}, Text: "/novo@ConfiguredBot"})
+	h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: 1, FirstName: "Conta A"}, Text: "/new@ConfiguredBot"})
 	for _, id := range []int64{1, 2} {
-		h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: id, FirstName: "Conta"}, Text: "/entrar@ConfiguredBot"})
+		h.HandleMessage(t.Context(), &telego.Message{Chat: chat, From: &telego.User{ID: id, FirstName: "Conta"}, Text: "/join@ConfiguredBot"})
 		rooms, err := svc.FindPlayerGames(t.Context(), game.Actor{PlayerID: uno.PlayerID(id)})
 		if err != nil || len(rooms) != 1 {
 			t.Fatal("joined room not discoverable", id, err, rooms)

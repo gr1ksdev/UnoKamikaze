@@ -72,9 +72,9 @@ func (h *InlineHandler) HandleInlineQuery(ctx context.Context, query *telego.Inl
 			Type:        "article",
 			ID:          "no_game",
 			Title:       "Você não está participando de nenhuma partida",
-			Description: "Use /novo para criar ou /entrar em um grupo para jogar.",
+			Description: "Use /new para criar ou /join em um grupo para jogar.",
 			InputMessageContent: &telego.InputTextMessageContent{
-				MessageText: "Você não está participando de nenhuma partida de UNO no momento. Use /novo para criar ou /entrar em um grupo para jogar!",
+				MessageText: "Você não está participando de nenhuma partida de UNO no momento. Use /new para criar ou /join em um grupo para jogar!",
 			},
 		})
 	} else {
@@ -229,9 +229,9 @@ func (h *InlineHandler) buildPlayerHandResults(
 				Type:        "article",
 				ID:          fmt.Sprintf("lobby_%s", gameID),
 				Title:       "A partida ainda não começou",
-				Description: "Aguarde o responsável iniciar com /iniciar",
+				Description: "Aguarde o responsável iniciar com /start",
 				InputMessageContent: &telego.InputTextMessageContent{
-					MessageText: fmt.Sprintf("A partida no grupo <b>%s</b> ainda não foi iniciada. Aguarde o responsável usar /iniciar!", view.Public.ChatName),
+					MessageText: fmt.Sprintf("A partida no grupo <b>%s</b> ainda não foi iniciada. Aguarde o responsável usar /start!", view.Public.ChatName),
 					ParseMode:   "HTML",
 				},
 				ReplyMarkup: makeGameButtons(view.Public),
@@ -246,24 +246,23 @@ func (h *InlineHandler) buildPlayerHandResults(
 	if view.Public.Phase == uno.ChoosingPlayer {
 		return h.playerChoiceResults(actorID, view), ""
 	}
+	if view.Public.Phase == uno.BlockingSwap {
+		return h.swapBlockResults(actorID, view, offsetStr)
+	}
 	if view.Public.Phase == uno.ChoosingColor {
 		if view.Public.ColorChooserID == actorID {
-			// The hand comes first: with a pending swap it is the hand the
-			// chooser is about to receive, and the colour should be picked
-			// from it. Cards stay in the private inline description only.
+			// The chooser always sees their own hand. A pending swap does not
+			// expose the target's cards: the colour is picked blind and the
+			// target gets the chance to counter with its Skip card.
 			if len(sortedHand) > 0 {
 				var descs []string
 				for _, cv := range sortedHand {
 					descs = append(descs, CardRepr(cv.Card))
 				}
-				title := "Cartas (toque para estado do jogo):"
-				if view.Public.SwapPending {
-					title = "🃏 Sua nova mão — escolha a cor:"
-				}
 				results = append(results, &telego.InlineQueryResultArticle{
 					Type:        "article",
 					ID:          fmt.Sprintf("hand_%s_%d", gameID, view.Public.Revision),
-					Title:       title,
+					Title:       "Cartas (toque para estado do jogo):",
 					Description: strings.Join(descs, ", "),
 					InputMessageContent: &telego.InputTextMessageContent{
 						MessageText: h.renderer.RenderPublicState(view.Public),
@@ -439,7 +438,7 @@ func (h *InlineHandler) buildPlayerHandResults(
 					StickerFileID: greyStickerID,
 					InputMessageContent: &telego.InputTextMessageContent{
 						// A grey card is still a tap that posts a message to the
-						// group. Publish the same authoritative state as /estado,
+						// group. Publish the same authoritative state as /state,
 						// never an error lecture about the card.
 						MessageText: h.renderer.RenderPublicState(view.Public),
 						ParseMode:   "HTML",
@@ -541,6 +540,11 @@ func (h *InlineHandler) HandleChosenInlineResult(ctx context.Context, chosen *te
 		}
 
 		confText := h.renderer.RenderActionConfirmation(actorID, actionToken.Action, outcome)
+		if strings.TrimSpace(confText) == "" {
+			// Entering the block window intentionally posts nothing: any public
+			// line would reveal that the target holds the Skip card.
+			return
+		}
 		params := &telego.SendMessageParams{
 			ChatID:    telego.ChatID{ID: int64(actionToken.ChatID)},
 			Text:      confText,
@@ -576,7 +580,7 @@ func (h *InlineHandler) replyActionError(ctx context.Context, actorID uno.Player
 	case view.Closed || view.Phase == uno.Finished:
 		text = "⚠️ Esta partida já foi encerrada."
 	default:
-		// Always the full authoritative state, exactly like /estado: top card,
+		// Always the full authoritative state, exactly like /state: top card,
 		// the pending decision and the order with each player's card count.
 		state := h.renderer.RenderPublicState(view)
 		if status == "stale" {
@@ -692,4 +696,103 @@ func (h *InlineHandler) playerChoiceResults(actorID uno.PlayerID, view game.Play
 		})
 	}
 	return results
+}
+
+// swapBlockResults shows the target's own hand as card stickers during the
+// block window. The Skip of the chosen colour is the block control (tap the
+// sticker); the remaining cards are grey and the pass sticker permits the swap.
+// Everyone else only sees a waiting notice.
+func (h *InlineHandler) swapBlockResults(actorID uno.PlayerID, view game.PlayerGameView, offsetStr string) ([]telego.InlineQueryResult, string) {
+	var results []telego.InlineQueryResult
+	if view.Public.BlockTargetID != actorID {
+		results = append(results, &telego.InlineQueryResultArticle{
+			Type:        "article",
+			ID:          fmt.Sprintf("wait_%s_%d", view.Public.GameID, view.Public.Revision),
+			Title:       "Aguardando resolução da troca",
+			Description: "Aguardando a resolução da troca de mãos.",
+			InputMessageContent: &telego.InputTextMessageContent{
+				MessageText: h.renderer.RenderPublicState(view.Public),
+				ParseMode:   "HTML",
+			},
+		})
+		var descriptions []string
+		for _, card := range sortHand(view.Hand) {
+			descriptions = append(descriptions, CardRepr(card.Card))
+		}
+		if len(descriptions) > 0 {
+			results = append(results, &telego.InlineQueryResultArticle{
+				Type:        "article",
+				ID:          fmt.Sprintf("hand_%s_%d", view.Public.GameID, view.Public.Revision),
+				Title:       "Suas cartas (toque para estado do jogo):",
+				Description: strings.Join(descriptions, ", "),
+				InputMessageContent: &telego.InputTextMessageContent{
+					MessageText: h.renderer.RenderPublicState(view.Public),
+					ParseMode:   "HTML",
+				},
+			})
+		}
+		return results, ""
+	}
+
+	// Handing the cards over is the target's explicit decision and comes first.
+	pass, err := h.tokens.CreateActionToken(actorID, view.Public.GameID, view.Public.ChatID, uno.Action{
+		Type: uno.PassHand, PlayerID: actorID, Revision: view.Public.Revision,
+	}, h.tokenTTL)
+	if err == nil {
+		results = append(results, &telego.InlineQueryResultCachedSticker{
+			Type:          "sticker",
+			ID:            pass,
+			StickerFileID: Stickers["option_pass"],
+			InputMessageContent: &telego.InputTextMessageContent{
+				MessageText: "Passando minha mão.",
+			},
+		})
+	}
+
+	sortedHand := sortHand(view.Hand)
+	offset := 0
+	if offsetStr != "" {
+		if cursor, err := h.tokens.GetCursor(offsetStr, actorID); err == nil &&
+			cursor.Kind == CursorKindHand && cursor.GameID == view.Public.GameID &&
+			cursor.Revision == view.Public.Revision {
+			offset = cursor.Offset
+		}
+	}
+	end := offset + 40 // room for the permit sticker under Telegram's 50-result cap
+	if end > len(sortedHand) {
+		end = len(sortedHand)
+	}
+	for i := offset; i < end; i++ {
+		cv := sortedHand[i]
+		if cv.Card.Rank == uno.Skip && cv.Card.Color == view.Public.BlockColor {
+			tok, err := h.tokens.CreateActionToken(actorID, view.Public.GameID, view.Public.ChatID, uno.Action{
+				Type: uno.BlockSwap, PlayerID: actorID, Revision: view.Public.Revision,
+			}, h.tokenTTL)
+			if err != nil {
+				continue
+			}
+			results = append(results, &telego.InlineQueryResultCachedSticker{
+				Type:          "sticker",
+				ID:            tok,
+				StickerFileID: GetCardStickerID(cv.Card),
+			})
+			continue
+		}
+		results = append(results, &telego.InlineQueryResultCachedSticker{
+			Type:          "sticker",
+			ID:            fmt.Sprintf("grey_%s_%d", cv.Card.ID, i),
+			StickerFileID: GetCardStickerGreyID(cv.Card),
+			InputMessageContent: &telego.InputTextMessageContent{
+				MessageText: h.renderer.RenderPublicState(view.Public),
+				ParseMode:   "HTML",
+			},
+		})
+	}
+	nextOffset := ""
+	if end < len(sortedHand) {
+		if tok, err := h.tokens.CreateCursorToken(actorID, CursorKindHand, view.Public.GameID, view.Public.Revision, end, h.tokenTTL); err == nil {
+			nextOffset = tok
+		}
+	}
+	return results, nextOffset
 }

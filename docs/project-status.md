@@ -1,6 +1,6 @@
 # UnoKamikaze — Estado do projeto
 
-Revisão: **2026-11-16**, branch `v3`.
+Revisão: **2026-11-23**, branch `v3`.
 
 ---
 
@@ -35,10 +35,10 @@ removidos, e a imagem Docker deixou de ter runtime Node.
 | Adapter Telegram | IMPLEMENTED + HOMOLOGATED | handlers, comandos, callbacks | Telegram real | tokens de uso único |
 | Modo Caseiro | IMPLEMENTED **BUT NOT HOMOLOGATED** | engine, serviço, inline, renderer | **pendente** | único modo agora |
 | Ranking Vitória/Colocação | IMPLEMENTED; N=1 PENDENTE DE HOMOLOGAÇÃO | cálculo, elegibilidade, monthly | Telegram real (N≥2) | política `completed-placements-v1`; N=1 agora pontua |
-| `/pular` / `/skip` | IMPLEMENTED **NOT HOMOLOGATED** | engine, serviço, comando | pendente | novo na v3 |
-| `/expulsar` / `/kick` | IMPLEMENTED **NOT HOMOLOGATED** | engine, serviço, comando | pendente | novo na v3 |
+| `/skip` | IMPLEMENTED **NOT HOMOLOGATED** | engine, serviço, comando | pendente | novo na v3 |
+| `/kick` | IMPLEMENTED **NOT HOMOLOGATED** | engine, serviço, comando | pendente | novo na v3 |
 | `/stats` | IMPLEMENTED **NOT HOMOLOGATED** | read, renderer, comando | pendente | novo na v3 |
-| Idioma de comandos por grupo | IMPLEMENTED **NOT HOMOLOGATED** | tabelas disjuntas, cache, menu por chat com `BotCommandScopeChat`, migration 0014 | pendente | padrão PT; admin troca no `/config` |
+| Troca de mãos manual + bloqueio com 🚫 | IMPLEMENTED **NOT HOMOLOGATED** | engine, serviço, inline, renderer | pendente | vítima entrega a mão ou bloqueia; timeout troca |
 | Webhook | IMPLEMENTED; PRODUCTION VALIDATION PENDING | HTTP, secret, retry, status, dedupe | Coolify real pendente | recomendado em produção |
 | Polling | IMPLEMENTED + HOMOLOGATED | transporte com mocks | Telegram real | `timeout=30` |
 | Docker V2 | IMPLEMENTED BUT NOT HOMOLOGATED | build no CI | operação não certificada | multi-arch sem Node |
@@ -68,19 +68,18 @@ removidos, e a imagem Docker deixou de ter runtime Node.
 
 ### Modo único
 
-O Caseiro é o único modo. O grupo não guarda mais o modo padrão e `/novo`
+O Caseiro é o único modo. O grupo não guarda mais o modo padrão e `/new`
 ignora seus argumentos. A engine continua genérica — `ClassicRules()` e
 `BotRules()` existem para os testes.
 
-### Idioma dos comandos
+### Comandos em inglês, textos em português
 
-O padrão é português. Um administrador troca o grupo para inglês em
-`/config`. Não existem aliases entre idiomas: o parser aceita somente a
-grafia configurada. O menu e a sugestão do Telegram acompanham — o Grupo EN
-recebe uma lista por chat via `SetMyCommands(BotCommandScopeChat)`, que tem
-prioridade sobre a lista global; voltar para PT chama `DeleteMyCommands` no
-mesmo escopo. O idioma fica em `group_configs.command_language` (migration
-0014) e é lido em cache pelo adapter.
+Os nomes dos comandos são **sempre ingleses** em grupos e no privado
+(`/new`, `/join`, `/settings`, `/help`…). As mensagens, ajuda e descrições do
+menu continuam em português. O menu do Telegram é registrado nos escopos
+default, privado e grupo, sem override por chat. A migration 0015 normalizou
+`group_configs.command_language` para `en`; a coluna permanece apenas por
+compatibilidade de schema.
 
 ### Sem identificador no campo de texto
 
@@ -93,10 +92,27 @@ Consequência: o seletor de partidas e o prefixo `g_` sumiram. O token de
 ação continua amarrando cada jogada ao usuário, à partida, ao chat, à ação e
 à revisão.
 
+### Troca de mãos com decisão da vítima
+
+Ao jogar a 🔀 e escolher vítima e cor, a partida entra na fase `BlockingSwap`.
+A vítima decide no menu privado: `PassHand` entrega suas cartas, `BlockSwap`
+gasta o 🚫 da cor escolhida e cancela a troca (com perda da próxima vez).
+A janela abre sempre, tenha ou não a vítima o 🚫. O timeout (`AllowSwap`)
+também completa a troca, para ninguém ficar preso. A janela não publica carta,
+nome da vítima como decididora nem cor do 🚫 — o turno anunciado é o do
+próximo jogador da cadeia. A escolha da cor da 🔀 gera só `🎨 Escolhendo a
+cor...` + `Vez de:`.
+
+### Card de estatísticas
+
+`/stats` posta `⏳ Gerando seu card...` respondendo ao comando e apaga essa
+mensagem quando o card chega. O card e o aviso respondem ao mesmo comando; o
+cache por `file_id` evita renderização e upload repetidos.
+
 ### Mensagens
 
 O fluxo anuncia a ação e o próximo turno. O estado detalhado — topo, cor,
-classificação e ordem — fica no `/estado`.
+classificação e ordem — fica no `/state`.
 
 ### Privacidade e ranking global
 
@@ -113,7 +129,7 @@ global da Mini App. O ranking do Telegram mostra os nomes normalmente.
 | 2 | AGPL-3.0 sem decisão explícita de licença | `LICENSE` adicionado; revisar antes do publish |
 | 3 | Estado das partidas em memória | documentado; resultados e ranking no Postgres |
 | 4 | Webhook exige instância única | nome consistente no Coolify |
-| 5 | Multi-grupo: o menu inline mostra o jogo corrente | `/entrar` e jogar uma carta atualizam o jogo corrente |
+| 5 | Multi-grupo: o menu inline mostra o jogo corrente | `/join` e jogar uma carta atualizam o jogo corrente |
 | 6 | Carga em muitos grupos nunca foi caracterizada | limitação conhecida |
 
 ---

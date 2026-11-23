@@ -65,8 +65,8 @@ func TestServiceSwapHandsAuthorizationViewsAndTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(ids(preview.Hand), ids(before2.Hand)) || slices.Equal(ids(preview.Hand), ids(before1.Hand[1:])) {
-		t.Fatal("chooser did not preview the incoming hand")
+	if !slices.Equal(ids(preview.Hand), ids(before1.Hand[1:])) || slices.Equal(ids(preview.Hand), ids(before2.Hand)) {
+		t.Fatal("chooser must see only their own hand, never the target's")
 	}
 	if !slices.Equal(ids(targetStillOwn.Hand), ids(before2.Hand)) {
 		t.Fatal("target's own view changed before the swap resolved")
@@ -76,6 +76,10 @@ func TestServiceSwapHandsAuthorizationViewsAndTimeout(t *testing.T) {
 		t.Fatal("color choice eligible for timeout")
 	}
 	chosen = act(t, s, v.GameID, Actor{PlayerID: 1}, uno.Action{Type: uno.ChooseColor, Color: played.View.ActiveColor})
+	if chosen.View.Phase != uno.BlockingSwap || chosen.View.BlockTargetID != 2 {
+		t.Fatal("target should hand over the cards manually", chosen.View)
+	}
+	chosen = act(t, s, v.GameID, Actor{PlayerID: 2}, uno.Action{Type: uno.PassHand})
 	if chosen.View.Phase != uno.TakingTurn || chosen.View.PlayerChooserID != 0 || chosen.View.CurrentTurn != 2 || chosen.View.ActiveColor != played.View.ActiveColor {
 		t.Fatal(chosen.View)
 	}

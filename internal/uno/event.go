@@ -21,6 +21,9 @@ const (
 	PlayerChoiceRequired EventType = "player_choice_required"
 	HandsSwapped         EventType = "hands_swapped"
 	HandKept             EventType = "hand_kept"
+	SwapBlockRequired    EventType = "swap_block_required"
+	SwapBlocked          EventType = "swap_blocked"
+	HandsPassed          EventType = "hands_passed"
 )
 
 // Event contains public facts only. CardsDrawn never exposes private card IDs.

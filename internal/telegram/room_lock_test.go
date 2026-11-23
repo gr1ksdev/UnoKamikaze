@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gr1ksdev/UnoKamikaze/internal/game"
-	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
 	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 	"github.com/mymmrac/telego"
 )
@@ -26,34 +25,34 @@ func TestRoomLockCommands(t *testing.T) {
 			t.Fatalf("%s: %s, want %s", command, api.LastSentMessage(), want)
 		}
 	}
-	send(99, "/trancar", "Nenhuma partida ativa")
-	send(99, "/novo", "Partida de UNO")
-	send(1, "/entrar", "1/10")
-	send(2, "/entrar", "2/10")
+	send(99, "/close", "Nenhuma partida ativa")
+	send(99, "/new", "Partida de UNO")
+	send(1, "/join", "1/10")
+	send(2, "/join", "2/10")
 	for _, active := range []bool{false, true} {
 		if active {
-			send(1, "/iniciar", "Partida iniciada")
+			send(1, "/start", "Partida iniciada")
 		}
-		send(1, "/trancar", "Apenas o responsável")
-		send(99, "/trancar", "🔒 A partida foi trancada.\nNovos jogadores não poderão entrar.")
-		send(99, "/trancar", "🔒 A partida já está trancada.")
-		send(3, "/entrar", "🔒 Esta partida está trancada e não aceita novos jogadores.")
-		send(1, "/destrancar", "Apenas o responsável")
-		send(99, "/destrancar", "🔓 A partida foi destrancada.\nNovos jogadores podem entrar novamente.")
-		send(99, "/destrancar", "🔓 A partida já está aberta.")
+		send(1, "/close", "Apenas o responsável")
+		send(99, "/close", "🔒 A partida foi trancada.\nNovos jogadores não poderão entrar.")
+		send(99, "/close", "🔒 A partida já está trancada.")
+		send(3, "/join", "🔒 Esta partida está trancada e não aceita novos jogadores.")
+		send(1, "/open", "Apenas o responsável")
+		send(99, "/open", "🔓 A partida foi destrancada.\nNovos jogadores podem entrar novamente.")
+		send(99, "/open", "🔓 A partida já está aberta.")
 	}
-	send(3, "/entrar", "entrou na partida em andamento")
+	send(3, "/join", "entrou na partida em andamento")
 	summary, _ := svc.FindChatGame(t.Context(), -10)
 	view, _ := svc.PublicView(t.Context(), summary.GameID)
 	if view.OwnerID != 99 || len(view.Players) != 3 || view.Phase != uno.TakingTurn {
 		t.Fatal(view)
 	}
-	send(99, "/cancelar", "Partida cancelada")
-	send(99, "/destrancar", "Nenhuma partida ativa")
-	send(99, "/novo", "Partida de UNO")
-	send(4, "/entrar", "1/10")
-	for _, text := range []string{"/trancar", "Impede novos jogadores de entrar", "/destrancar", "Permite novas entradas"} {
-		if !strings.Contains(r.RenderHelp("unokamikaze", groups.CommandsPT), text) {
+	send(99, "/kill", "Partida cancelada")
+	send(99, "/open", "Nenhuma partida ativa")
+	send(99, "/new", "Partida de UNO")
+	send(4, "/join", "1/10")
+	for _, text := range []string{"/close", "Impede novos jogadores de entrar", "/open", "Permite novas entradas"} {
+		if !strings.Contains(r.RenderHelp("unokamikaze"), text) {
 			t.Fatal("help missing", text)
 		}
 	}

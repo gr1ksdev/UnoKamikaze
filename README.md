@@ -18,9 +18,9 @@ público no chat do grupo.
   melhor colocação, conclusão mais recente e UserID.
 - **Webhook como transporte de produção.** Long polling é o padrão local.
 - **Mensagens enxutas.** O fluxo anuncia a jogada e o próximo turno
-  (`Vez de: Fulano`). O estado detalhado fica no `/estado`.
+  (`Vez de: Fulano`). O estado detalhado fica no `/state`.
 
-O projeto descends do bot [@unobot](https://github.com/jh0ker/mau_mau_bot)
+O projeto descende do bot [@unobot](https://github.com/jh0ker/mau_mau_bot)
 (AGPL-3.0), cujo baralho de stickers é preservado aqui.
 
 ---
@@ -52,7 +52,7 @@ inicialização, com advisory lock transacional fail-closed.
 | `TELEGRAM_MODE` | `polling` (padrão) ou `webhook` |
 | `TURN_TIMEOUT` | Tempo inicial de cada turno; padrão `2m` |
 | `SKIP_TIME_PENALTY` | Tempo perdido pelo jogador a cada pulo; padrão `20s` |
-| `MIN_TURN_TIME` | Piso do cronômetro (automático e `/pular`); padrão `15s` |
+| `MIN_TURN_TIME` | Piso do cronômetro (automático e `/skip`); padrão `15s` |
 | `WEB_ADDR` | Endereço HTTP das sondas e do webhook; padrão `:8080` |
 | `MINIAPP_SECRET` | Exatamente 32 bytes em Base64; gere com `openssl rand -base64 32` |
 | `WEBHOOK_URL` | Somente no modo webhook: URL pública HTTPS com caminho dedicado |
@@ -65,33 +65,30 @@ timeout das migrations de `2m` e descarte de updates pendentes desativado.
 
 ## Comandos
 
-O padrão é **português**. Um administrador pode trocar um grupo para inglês
-com `/config` → `🇺🇸 English`. **Não há aliases entre os idiomas**: um grupo
-em português aceita só `/novo`, `/entrar`…; um grupo em inglês aceita só
-`/new`, `/join`… O menu de comandos e a sugestão do Telegram (ao digitar `/`)
-seguem o idioma configurado naquele grupo.
+Os **nomes dos comandos são sempre em inglês**, em todos os grupos e no
+privado. Todos os textos e mensagens do bot continuam em português. O menu e a
+sugestão do Telegram (ao digitar `/`) usam os nomes abaixo, com descrições em
+português.
 
-| Português | English | Descrição |
-|---|---|---|
-| `/start` | `/start` | Apresentação do bot (privado / deep link) |
-| `/ajuda` | `/help` | Lista de comandos e instruções |
-| `/novo` | `/new` | Cria uma partida no grupo (você é o responsável) |
-| `/entrar` | `/join` | Entra na partida aberta ou em andamento |
-| `/trancar` · `/destrancar` | `/close` · `/open` | Controla novas entradas (responsável) |
-| `/iniciar` | `/start` | Inicia a partida com pelo menos dois jogadores |
-| `/estado` | `/state` | Mostra o lobby ou o estado detalhado da partida |
-| `/ranking` | `/ranking` | Ranking mensal do grupo; no privado, seus rankings |
-| `/stats` | `/stats` | Card em foto com partidas e vitórias; pontos e colocação na legenda |
-| `/sair` | `/leave` | Sai da partida em andamento |
-| `/pular` | `/skip` | Qualquer participante pode pedir; terceiros só após o prazo do jogador da vez |
-| `/expulsar` | `/kick` | Expulsa um jogador; responda à mensagem dele |
-| `/cancelar` | `/kill` | Cancela a partida (responsável, criador ou admin) |
-| `/config` | `/settings` | Configura ranking e idioma dos comandos |
-| `/reset` | `/reset` | Recupera o grupo e limpa partida e histórico |
+| Comando | Descrição |
+|---|---|
+| `/start` | Apresentação no privado / deep link; inicia a partida no grupo |
+| `/help` | Lista de comandos e instruções |
+| `/new` | Cria uma partida no grupo (você é o responsável) |
+| `/join` | Entra na partida aberta ou em andamento |
+| `/close` · `/open` | Controla novas entradas (responsável) |
+| `/state` | Mostra o lobby ou o estado detalhado da partida |
+| `/ranking` | Ranking mensal do grupo; no privado, seus rankings |
+| `/stats` | Card em foto com partidas e vitórias; pontos e colocação na legenda |
+| `/leave` | Sai da partida em andamento |
+| `/skip` | Qualquer participante pode pedir; terceiros só após o prazo do jogador da vez |
+| `/kick` | Expulsa um jogador; responda à mensagem dele |
+| `/kill` | Cancela a partida (responsável, criador ou admin) |
+| `/settings` | Configura o sistema de ranking do grupo |
+| `/reset` | Recupera o grupo e limpa partida e histórico |
 
 Em grupos e supergrupos, todo comando precisa mencionar o bot:
-`/novo@SeuBot` (ou `/new@SeuBot` em grupo em inglês). No privado, o sufixo é
-opcional e o idioma é português.
+`/new@SeuBot`. No privado, o sufixo é opcional.
 
 ### Como jogar as cartas
 
@@ -102,7 +99,31 @@ nenhum identificador no campo de texto.
 
 A cada jogada, o grupo recebe **uma** mensagem: `Vez de: Fulano`. O sticker
 publicado pelo inline já mostra a carta. O aviso de UNO e a confirmação final
-com as colocações continuam. O estado detalhado fica no `/estado` (`/state`).
+com as colocações continuam. O estado detalhado fica no `/state`.
+
+### 🔀 Trocar cartas e bloqueio
+
+A carta **🔀 Trocar cartas** abre uma escolha de vítima; ao selecioná-la, o
+grupo vê `🎨 Escolhendo a cor...` e a vez do escolhedor. Depois da cor, a
+**vítima decide no menu privado**:
+
+- **➡️ Passar minha mão** — entrega as próprias cartas; o grupo anuncia quem
+  passou e as mãos são trocadas.
+- **🚫 Pular da cor escolhida** — se a vítima tiver essa carta, ela pode
+  bloquear: a troca é cancelada, o 🚫 vai para o descarte e a vítima perde a
+  próxima vez em que a vez chegaria nela.
+- As demais cartas da mão aparecem em cinza (não acionáveis).
+
+Se a vítima não decidir, a troca acontece automaticamente ao fim do prazo.
+A janela de decisão é silenciosa quanto às cartas da vítima: o grupo nunca é
+informado sobre quais cartas ela tem. Nenhuma mensagem da janela cita a carta
+de bloqueio; o 🚫 só aparece quando a vítima decide jogá-lo.
+
+### Card de estatísticas
+
+`/stats` responde ao comando com `⏳ Gerando seu card...`, removida quando o
+card (ou o texto de fallback) é entregue. O card também responde ao comando e
+é reaproveitado por `file_id` enquanto os dados não mudam.
 
 ---
 
@@ -125,9 +146,9 @@ O ranking mensal usa o calendário de `America/Sao_Paulo` e desempata por
 melhor colocação na última partida elegível do mês, depois pela conclusão mais
 recente e, por estabilidade, pelo UserID.
 
-`/config` (administradores ou quem adicionou o bot) alterna a política de
-ranking e o idioma dos comandos do grupo. A troca de sistema de ranking é
-recusada quando o grupo já tem pontuações no sistema anterior.
+`/settings` (administradores ou quem adicionou o bot) alterna a política de
+ranking do grupo. A troca de sistema de ranking é recusada quando o grupo já
+tem pontuações no sistema anterior.
 
 ---
 

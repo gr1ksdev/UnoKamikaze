@@ -66,11 +66,18 @@ func TestOptionalSwapResolvesOnlyWithColor(t *testing.T) {
 						}
 						resolution := apply(t, g, Action{Type: ChooseColor, PlayerID: 1, Color: color})
 						apply(t, restored, Action{Type: ChooseColor, PlayerID: 1, Color: color})
+						wantRevision := before.Revision + 3
+						if !keep {
+							// The target now hands over the cards explicitly.
+							resolution = apply(t, g, Action{Type: PassHand, PlayerID: 2})
+							apply(t, restored, Action{Type: PassHand, PlayerID: 2})
+							wantRevision++
+						}
 						after := g.Snapshot()
 						if !reflect.DeepEqual(after, restored.Snapshot()) {
 							t.Fatal("non-deterministic restore")
 						}
-						if after.Revision != before.Revision+3 || after.Phase != TakingTurn || after.CurrentPlayerID != before.next(1, 1) || after.ActiveColor != color || after.Pending != nil || after.Direction != direction || !slices.Equal(after.Order, before.Order) || !slices.Equal(after.Cards, before.Cards) || !slices.Equal(after.DrawPile, before.DrawPile) {
+						if after.Revision != wantRevision || after.Phase != TakingTurn || after.CurrentPlayerID != before.next(1, 1) || after.ActiveColor != color || after.Pending != nil || after.Direction != direction || !slices.Equal(after.Order, before.Order) || !slices.Equal(after.Cards, before.Cards) || !slices.Equal(after.DrawPile, before.DrawPile) {
 							t.Fatal("invalid final state")
 						}
 						if keep {

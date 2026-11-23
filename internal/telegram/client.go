@@ -93,6 +93,7 @@ type BotAPI interface {
 	SendPhoto(ctx context.Context, params *telego.SendPhotoParams) (*telego.Message, error)
 	EditMessageText(ctx context.Context, params *telego.EditMessageTextParams) (*telego.Message, error)
 	EditMessageReplyMarkup(ctx context.Context, params *telego.EditMessageReplyMarkupParams) (*telego.Message, error)
+	DeleteMessage(ctx context.Context, params *telego.DeleteMessageParams) error
 	AnswerInlineQuery(ctx context.Context, params *telego.AnswerInlineQueryParams) error
 	AnswerCallbackQuery(ctx context.Context, params *telego.AnswerCallbackQueryParams) error
 	SetMessageReaction(ctx context.Context, params *telego.SetMessageReactionParams) error

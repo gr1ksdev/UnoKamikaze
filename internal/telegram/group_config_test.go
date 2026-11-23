@@ -21,12 +21,6 @@ func (r *configRepo) GetOrCreateGroupConfig(context.Context, int64) (groups.Conf
 	r.calls++
 	return r.config, r.err
 }
-func (r *configRepo) SetCommandLanguage(context.Context, int64, groups.CommandLanguage) (groups.Config, error) {
-	panic("unexpected SetCommandLanguage call")
-}
-func (r *configRepo) ReadCommandLanguage(context.Context, int64) (groups.CommandLanguage, error) {
-	return groups.CommandsPT, nil
-}
 func (r *configRepo) SetRankingSystem(context.Context, int64, groups.RankingSystem) (groups.Config, error) {
 	panic("unexpected SetRankingSystem call")
 }
@@ -43,9 +37,9 @@ func TestNovoAlwaysUsesHouseRules(t *testing.T) {
 	for _, tt := range []struct {
 		cmd string
 	}{
-		{"/novo"},
-		{"/novo classico"},
-		{"/novo caseiro"},
+		{"/new"},
+		{"/new classico"},
+		{"/new caseiro"},
 	} {
 		t.Run(tt.cmd, func(t *testing.T) {
 			svc, _ := game.NewService()
@@ -53,7 +47,7 @@ func TestNovoAlwaysUsesHouseRules(t *testing.T) {
 			r := &configRepo{config: groups.Defaults(42)}
 			r.config.RankingSystem = groups.Updated
 			h.groupConfigs = r
-			h.HandleMessage(t.Context(), &telego.Message{Chat: telego.Chat{ID: 42, Type: "group"}, From: &telego.User{ID: 1}, Text: strings.Replace(tt.cmd, "/novo", "/novo@unokamikaze", 1)})
+			h.HandleMessage(t.Context(), &telego.Message{Chat: telego.Chat{ID: 42, Type: "group"}, From: &telego.User{ID: 1}, Text: strings.Replace(tt.cmd, "/new", "/new@unokamikaze", 1)})
 			summary, err := svc.FindChatGame(t.Context(), 42)
 			if err != nil {
 				t.Fatal(err)
@@ -70,7 +64,7 @@ func TestNovoAlwaysUsesHouseRules(t *testing.T) {
 			}
 			// A later gameplay command must work even if persistence is unavailable.
 			r.err = errors.New("offline")
-			h.HandleMessage(t.Context(), &telego.Message{Chat: telego.Chat{ID: 42, Type: "group"}, From: &telego.User{ID: 1}, Text: "/entrar@unokamikaze"})
+			h.HandleMessage(t.Context(), &telego.Message{Chat: telego.Chat{ID: 42, Type: "group"}, From: &telego.User{ID: 1}, Text: "/join@unokamikaze"})
 			v, _ = svc.PublicView(t.Context(), summary.GameID)
 			if len(v.Players) != 1 || r.calls != 1 {
 				t.Fatal("join depended on DB")

@@ -506,6 +506,14 @@ func (m *manager) expiredTurns(ctx context.Context, timeout time.Duration, now t
 			continue
 		}
 		before := entry.engine.Snapshot()
+		if before.Phase == uno.BlockingSwap {
+			// The target has a short, dedicated window; expiry allows the swap.
+			if before.Pending != nil && before.Pending.SwapTarget != 0 && now.Sub(entry.turnStarted) >= timeout {
+				results = append(results, ExpiredTurn{GameID: before.ID, ChatID: entry.chatID, PlayerID: before.Pending.SwapTarget, Revision: before.Revision, Block: true})
+			}
+			entry.mu.Unlock()
+			continue
+		}
 		if before.Phase != uno.TakingTurn || before.CurrentPlayerID == 0 {
 			entry.mu.Unlock()
 			continue
@@ -531,6 +539,19 @@ func (m *manager) skipTurn(ctx context.Context, candidate ExpiredTurn, timeout t
 		return Outcome{}, false
 	}
 	before := entry.engine.Snapshot()
+	if candidate.Block {
+		if before.Phase != uno.BlockingSwap || before.Pending == nil || before.Pending.SwapTarget != candidate.PlayerID || before.Revision != candidate.Revision || ctx.Err() != nil {
+			return Outcome{}, false
+		}
+		if now.Sub(entry.turnStarted) < timeout {
+			return Outcome{}, false
+		}
+		result, err := entry.engine.Apply(uno.Action{Type: uno.AllowSwap, PlayerID: candidate.PlayerID, Revision: candidate.Revision})
+		if err != nil {
+			return Outcome{}, false
+		}
+		return m.publish(entry, before, entry.engine.Snapshot(), result), true
+	}
 	if before.Phase != uno.TakingTurn || before.CurrentPlayerID == 0 || before.CurrentPlayerID != candidate.PlayerID || before.Revision != candidate.Revision || ctx.Err() != nil {
 		return Outcome{}, false
 	}

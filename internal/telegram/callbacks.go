@@ -23,8 +23,6 @@ type CallbackHandler struct {
 	logger        *slog.Logger
 	groupsService *groups.Service
 	knownUsers    groups.UserRepository
-	languages     *languageCache
-	applyMenu     func(context.Context, game.ChatID, groups.CommandLanguage) error
 }
 
 func (h *CallbackHandler) SetGroupsService(s *groups.Service) {
@@ -140,7 +138,7 @@ func (h *CallbackHandler) handleStartCallback(ctx context.Context, cq *telego.Ca
 			ReplyMarkup: &telego.InlineKeyboardMarkup{InlineKeyboard: [][]telego.InlineKeyboardButton{}},
 		})
 	}
-	// The actual game flow goes in a new message, exactly like /iniciar.
+	// The actual game flow goes in a new message, exactly like /start.
 	sendStartFlow(ctx, h.bot, h.renderer, chatID, outcome.View)
 	answer("✅ Partida iniciada!", false)
 }
@@ -158,7 +156,7 @@ func (h *CallbackHandler) handleRefreshState(ctx context.Context, cq *telego.Cal
 
 	var text string
 	if view.Phase == uno.Lobby {
-		text = h.renderer.RenderLobby(view, h.commandLanguage(ctx, game.ChatID(cq.Message.GetChat().ID)))
+		text = h.renderer.RenderLobby(view)
 	} else {
 		text = h.renderer.RenderPublicState(view)
 	}
@@ -358,58 +356,5 @@ func (h *CallbackHandler) handleConfigCallback(ctx context.Context, cq *telego.C
 			Text:            fmt.Sprintf("Sistema de ranking alterado para %s.", rankName),
 		})
 
-	case "lang":
-		var target groups.CommandLanguage
-		var label string
-		switch actionArg {
-		case "pt":
-			target, label = groups.CommandsPT, "Português"
-		case "en":
-			target, label = groups.CommandsEN, "English"
-		default:
-			_ = h.bot.AnswerCallbackQuery(ctx, &telego.AnswerCallbackQueryParams{
-				CallbackQueryID: cq.ID,
-				Text:            "⚠️ Idioma inválido.",
-				ShowAlert:       true,
-			})
-			return
-		}
-
-		cfg, err := svc.SetCommandLanguage(ctx, targetChatID, actorID, target)
-		if errors.Is(err, groups.ErrForbidden) {
-			_ = h.bot.AnswerCallbackQuery(ctx, &telego.AnswerCallbackQueryParams{
-				CallbackQueryID: cq.ID,
-				Text:            "⚠️ Somente administradores ou quem adicionou o bot pode alterar esta configuração.",
-				ShowAlert:       true,
-			})
-			return
-		}
-		if err != nil {
-			_ = h.bot.AnswerCallbackQuery(ctx, &telego.AnswerCallbackQueryParams{
-				CallbackQueryID: cq.ID,
-				Text:            "❌ Não foi possível alterar o idioma.",
-				ShowAlert:       true,
-			})
-			return
-		}
-
-		if h.applyMenu != nil {
-			_ = h.applyMenu(ctx, game.ChatID(targetChatID), target)
-		}
-		h.languages.set(game.ChatID(targetChatID), target)
-
-		text := h.renderer.RenderGroupConfig(cfg)
-		buttons := makeGroupConfigButtons(cfg)
-		_, _ = h.bot.EditMessageText(ctx, &telego.EditMessageTextParams{
-			ChatID:      telego.ChatID{ID: targetChatID},
-			MessageID:   messageID,
-			Text:        text,
-			ParseMode:   telego.ModeHTML,
-			ReplyMarkup: buttons,
-		})
-		_ = h.bot.AnswerCallbackQuery(ctx, &telego.AnswerCallbackQueryParams{
-			CallbackQueryID: cq.ID,
-			Text:            fmt.Sprintf("Idioma dos comandos alterado para %s.", label),
-		})
 	}
 }

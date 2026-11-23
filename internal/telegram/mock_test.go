@@ -35,6 +35,7 @@ type mockBotAPI struct {
 	SendPhotoCtx         context.Context
 	SendPhotoCtxErr      error
 	SentReactions        []telego.SetMessageReactionParams
+	DeletedMessages      []telego.DeleteMessageParams
 	EditedMessages       []telego.EditMessageTextParams
 	EditedMarkups        []telego.EditMessageReplyMarkupParams
 	AnsweredInlines      []telego.AnswerInlineQueryParams
@@ -205,6 +206,15 @@ func (m *mockBotAPI) SendPhoto(ctx context.Context, params *telego.SendPhotoPara
 		msg.Photo = []telego.PhotoSize{{FileID: "small_" + m.PhotoFileID}, {FileID: m.PhotoFileID}}
 	}
 	return msg, nil
+}
+
+func (m *mockBotAPI) DeleteMessage(ctx context.Context, params *telego.DeleteMessageParams) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if params != nil {
+		m.DeletedMessages = append(m.DeletedMessages, *params)
+	}
+	return nil
 }
 
 func (m *mockBotAPI) EditMessageText(ctx context.Context, params *telego.EditMessageTextParams) (*telego.Message, error) {

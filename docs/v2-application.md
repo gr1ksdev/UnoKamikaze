@@ -19,21 +19,29 @@ durável de sessão atualmente: snapshots de `uno.State` não contêm metadata d
 admissão e não são snapshots completos de `internal/game`.
 
 
-## Troca de mãos — 2026-09-28
+## Troca de mãos — 2026-09-28 (atualizada em 2026-11-23)
 
-`ChoosePlayer`, `KeepHand` e `ChooseColor` são ações autenticadas pelo `Actor`,
-partida e revisão. O mutex por partida serializa cada ação. A engine descarta a
-carta, guarda alvo/manter em `ColorChoice` e só transfere mãos na escolha de cor.
-Cada ação aceita avança uma revisão. Views privadas refletem apenas a mão do
-solicitante; eventos públicos nunca expõem os IDs das cartas transferidas.
+`ChoosePlayer`, `KeepHand`, `ChooseColor`, `PassHand`, `BlockSwap` e `AllowSwap`
+são ações autenticadas pelo `Actor`, partida e revisão. O mutex por partida
+serializa cada ação. A engine descarta a carta, guarda alvo/manter em
+`ColorChoice` e, com alvo, abre a fase `BlockingSwap`: a vítima entrega as mãos
+(`PassHand`) ou bloqueia com o 🚫 da cor (`BlockSwap`). `AllowSwap` é a saída de
+timeout e completa a troca. Cada ação aceita avança uma revisão. Views privadas
+refletem apenas a mão do solicitante; eventos públicos nunca expõem os IDs das
+cartas transferidas.
 
 `PublicGameView.PlayerChooserID` identifica quem escolhe alvo/manter; o fluxo
-seguinte reutiliza `ColorChooserID`. Última carta termina diretamente e conserva
-os hooks normais de resultado/ranking da M7, sem mudanças de GroupConfig/storage.
+seguinte reutiliza `ColorChooserID`. Na janela, `BlockTargetID` identifica a
+vítima, `BlockTurnID` o próximo jogador do turno e `BlockColor` a cor escolhida.
+`authorize` permite `PassHand`/`BlockSwap`/`AllowSwap` fora da vez, desde que o
+ator seja a vítima. Última carta termina diretamente e conserva os hooks normais
+de resultado/ranking da M7, sem mudanças de GroupConfig/storage.
 
-`ChoosingPlayer` e `ChoosingColor` não são elegíveis para timeout. O próximo turno
+`ChoosingPlayer` e `ChoosingColor` não são elegíveis para timeout. A janela
+`BlockingSwap` expira no timeout de turno como `AllowSwap`. O próximo turno
 recebe prazo novo após a resolução. Seleções antigas são recusadas por revisão;
-saída do alvo durante a escolha de cor reabre alvo/manter, sem transferência.
+saída do alvo durante a escolha de cor reabre alvo/manter, sem transferência;
+saída da vítima na janela cancela a transferência.
 
 `TurnPolicy` (`Initial`, `Min`, `Penalty`) governa o prazo por jogador: cada pulo
 cobra uma carta do pulado e reduz seu tempo em `Penalty` até o piso `Min`, sem
@@ -140,8 +148,8 @@ função administrativa do usuário no chat.
 - Create exige PlayerID positivo e ChatID não zero.
 - Join/Leave exigem contexto do chat correspondente.
 - Start/Cancel exigem contexto do chat e `Actor.PlayerID == OwnerID`.
-- Play/Draw/Pass/ChooseColor/ChoosePlayer/CallBluff aceitam ChatID zero para o futuro inline; qualquer
-  ChatID fornecido precisa corresponder ao jogo.
+- Play/Draw/Pass/ChooseColor/ChoosePlayer/CallBluff/PassHand/BlockSwap/AllowSwap aceitam
+  ChatID zero para o futuro inline; qualquer ChatID fornecido precisa corresponder ao jogo.
 - ResetChat aceita o responsável da partida ou `ChatAdmin`; nenhum dos dois recebe
   acesso a mãos por causa dessa autorização.
 

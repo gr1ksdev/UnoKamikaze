@@ -28,11 +28,11 @@ func TestCommandResponsesMarkTheCommand(t *testing.T) {
 		MessageID: 456,
 		Chat:      telego.Chat{ID: -10, Type: "supergroup", Title: "Grupo"},
 		From:      &telego.User{ID: 2, FirstName: "Bob"},
-		Text:      "/ajuda@unokamikaze",
+		Text:      "/help@unokamikaze",
 	})
 	reply = api.SentMessages[len(api.SentMessages)-1].ReplyParameters
 	if reply == nil || reply.MessageID != 456 {
-		t.Fatalf("/ajuda reply = %+v, want reply to 456", reply)
+		t.Fatalf("/help reply = %+v, want reply to 456", reply)
 	}
 }
 

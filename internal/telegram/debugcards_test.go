@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gr1ksdev/UnoKamikaze/internal/game"
-	"github.com/gr1ksdev/UnoKamikaze/internal/groups"
 	"github.com/gr1ksdev/UnoKamikaze/internal/uno"
 	"github.com/mymmrac/telego"
 )
@@ -122,8 +121,7 @@ func TestDebugCommandDeliveryAndRejections(t *testing.T) {
 			t.Fatal("command advertised")
 		}
 	}
-	if strings.Contains(b.renderer.RenderHelp("testbot", groups.CommandsPT), "/dar") ||
-		strings.Contains(b.renderer.RenderHelp("testbot", groups.CommandsEN), "/dar") {
+	if strings.Contains(b.renderer.RenderHelp("testbot"), "/dar") {
 		t.Fatal("debug command in help")
 	}
 }

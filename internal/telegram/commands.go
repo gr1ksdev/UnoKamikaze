@@ -58,7 +58,6 @@ type CommandHandler struct {
 	renderer       *Renderer
 	tokens         *TokenStore
 	botUsername    string
-	languages      *languageCache
 	logger         *slog.Logger
 }
 
@@ -98,7 +97,6 @@ func NewCommandHandler(
 		renderer:    renderer,
 		tokens:      tokens,
 		botUsername: strings.ToLower(botUsername),
-		languages:   newLanguageCache(),
 		logger:      logger,
 		statsCache:  newStatsCardCache(statsCacheLimit),
 		renderCard:  statscard.Render,
@@ -158,36 +156,17 @@ func makeGroupConfigButtons(config groups.Config) *telego.InlineKeyboardMarkup {
 		legacyText = "✅ Vitória"
 	}
 
-	ptText, enText := "🇧🇷 Português", "🇺🇸 English"
-	if config.CommandLanguage == groups.CommandsEN {
-		enText = "✅ 🇺🇸 English"
-	} else {
-		ptText = "✅ 🇧🇷 Português"
-	}
-
 	return &telego.InlineKeyboardMarkup{
-		InlineKeyboard: [][]telego.InlineKeyboardButton{
+		InlineKeyboard: [][]telego.InlineKeyboardButton{{
 			{
-				{
-					Text:         legacyText,
-					CallbackData: fmt.Sprintf("cfg_rank_legacy_%d", config.ChatID),
-				},
-				{
-					Text:         updatedText,
-					CallbackData: fmt.Sprintf("cfg_rank_updated_%d", config.ChatID),
-				},
+				Text:         legacyText,
+				CallbackData: fmt.Sprintf("cfg_rank_legacy_%d", config.ChatID),
 			},
 			{
-				{
-					Text:         ptText,
-					CallbackData: fmt.Sprintf("cfg_lang_pt_%d", config.ChatID),
-				},
-				{
-					Text:         enText,
-					CallbackData: fmt.Sprintf("cfg_lang_en_%d", config.ChatID),
-				},
+				Text:         updatedText,
+				CallbackData: fmt.Sprintf("cfg_rank_updated_%d", config.ChatID),
 			},
-		},
+		}},
 	}
 }
 
@@ -262,21 +241,19 @@ func (h *CommandHandler) HandleMessage(ctx context.Context, msg *telego.Message)
 			h.reply(ctx, msg.Chat.ID, h.renderer.RenderWelcome(), makePrivateStartButtons(h.botUsername))
 			return
 		}
-		id, ok := resolveCommand(cmdName, groups.CommandsPT)
+		id, ok := resolveCommand(cmdName)
 		if !ok {
 			return
 		}
 		switch id {
 		case cmdHelp:
-			h.reply(ctx, msg.Chat.ID, h.renderer.RenderHelp(h.botUsername, groups.CommandsPT), nil)
+			h.reply(ctx, msg.Chat.ID, h.renderer.RenderHelp(h.botUsername), nil)
 		case cmdRanking:
 			h.handlePrivateRanking(ctx, msg.Chat.ID, int64(actorID))
 		case cmdStats:
 			h.handleStats(ctx, msg.Chat.ID, 0, actorID, "", msg.From.FirstName)
 		default:
-			if _, known := portugueseCommands[strings.ToLower(cmdName)]; known {
-				h.reply(ctx, msg.Chat.ID, fmt.Sprintf("⚠️ Este comando só pode ser utilizado em grupos. Adicione o bot a um grupo para jogar!\n\nUse %s para mais instruções.", commandName(cmdHelp, groups.CommandsPT)), nil)
-			}
+			h.reply(ctx, msg.Chat.ID, fmt.Sprintf("⚠️ Este comando só pode ser utilizado em grupos. Adicione o bot a um grupo para jogar!\n\nUse %s para mais instruções.", commandName(cmdHelp)), nil)
 		}
 		return
 	}
@@ -297,9 +274,8 @@ func (h *CommandHandler) HandleMessage(ctx context.Context, msg *telego.Message)
 	// /start true is the Telegram deep link used when the bot is added to a
 	// group. It is protocol traffic, not a user command, so it is universal.
 	if cmdName == "start" && len(fields) > 1 && fields[1] == "true" {
-		lang := h.commandLanguage(ctx, chatID)
 		h.reply(ctx, int64(msg.Chat.ID), fmt.Sprintf("👋 <b>UnoKamikaze adicionado!</b>\n\nUse %s para criar uma partida ou %s para conhecer os comandos.",
-			commandName(cmdNew, lang), commandName(cmdHelp, lang)), nil)
+			commandName(cmdNew), commandName(cmdHelp)), nil)
 		return
 	}
 
@@ -309,11 +285,10 @@ func (h *CommandHandler) HandleMessage(ctx context.Context, msg *telego.Message)
 		return
 	}
 
-	lang := h.commandLanguage(ctx, chatID)
-	id, ok := resolveCommand(cmdName, lang)
+	id, ok := resolveCommand(cmdName)
 	if !ok {
-		// Commands from the other language are ignored silently. The Telegram
-		// command menu only advertises the configured spelling.
+		// Unknown commands are ignored silently; Telegram only advertises the
+		// English spellings registered in the command menu.
 		return
 	}
 
@@ -345,7 +320,7 @@ func (h *CommandHandler) HandleMessage(ctx context.Context, msg *telego.Message)
 	case cmdConfig:
 		h.handleConfig(ctx, msg)
 	case cmdHelp:
-		h.reply(ctx, int64(msg.Chat.ID), h.renderer.RenderHelp(h.botUsername, lang), nil)
+		h.reply(ctx, int64(msg.Chat.ID), h.renderer.RenderHelp(h.botUsername), nil)
 	}
 }
 
@@ -462,10 +437,10 @@ func (h *CommandHandler) HandleReset(ctx context.Context, msg *telego.Message, r
 		"removed_history", result.RemovedHistory,
 	)
 	if len(result.GameIDs) == 0 {
-		h.reply(ctx, msg.Chat.ID, "♻️ <b>A fila deste grupo foi renovada.</b> Não havia partida ou histórico para remover. Use /novo para iniciar.", nil)
+		h.reply(ctx, msg.Chat.ID, "♻️ <b>A fila deste grupo foi renovada.</b> Não havia partida ou histórico para remover. Use /new para iniciar.", nil)
 		return
 	}
-	h.reply(ctx, msg.Chat.ID, "♻️ <b>Estado deste grupo resetado.</b> Tarefas e botões antigos foram invalidados. Use /novo para iniciar uma nova partida.", nil)
+	h.reply(ctx, msg.Chat.ID, "♻️ <b>Estado deste grupo resetado.</b> Tarefas e botões antigos foram invalidados. Use /new para iniciar uma nova partida.", nil)
 }
 
 func (h *CommandHandler) handleNovoObserved(ctx context.Context, actorID uno.PlayerID, chatID game.ChatID, chatTitle string, user *telego.User) {
@@ -495,7 +470,7 @@ func (h *CommandHandler) handleNovoObserved(ctx context.Context, actorID uno.Pla
 	outcome, err := h.service.Create(ctx, actor, req)
 	if err != nil {
 		if errors.Is(err, game.ErrChatOccupied) {
-			h.reply(ctx, int64(chatID), "⚠️ Já existe uma partida iniciada em andamento neste grupo.\nUse /estado para ver ou /cancelar para encerrar.", nil)
+			h.reply(ctx, int64(chatID), "⚠️ Já existe uma partida iniciada em andamento neste grupo.\nUse /state para ver ou /kill para encerrar.", nil)
 			return
 		}
 		h.reply(ctx, int64(chatID), "❌ Não foi possível criar a partida. Tente novamente.", nil)
@@ -505,14 +480,14 @@ func (h *CommandHandler) handleNovoObserved(ctx context.Context, actorID uno.Pla
 		h.tokens.InvalidateGame(outcome.ReplacedGameID)
 	}
 
-	h.reply(ctx, int64(chatID), h.renderer.RenderLobby(outcome.View, h.commandLanguage(ctx, chatID)), h.gameMarkup(outcome.View))
+	h.reply(ctx, int64(chatID), h.renderer.RenderLobby(outcome.View), h.gameMarkup(outcome.View))
 }
 
 func (h *CommandHandler) handleEntrar(ctx context.Context, actorID uno.PlayerID, chatID game.ChatID) {
 	summary, err := h.service.FindChatGame(ctx, chatID)
 	if err != nil {
 		if errors.Is(err, game.ErrNoActiveGame) || errors.Is(err, game.ErrGameNotFound) {
-			h.reply(ctx, int64(chatID), "⚠️ Nenhuma partida aberta neste grupo. Use /novo para criar uma.", nil)
+			h.reply(ctx, int64(chatID), "⚠️ Nenhuma partida aberta neste grupo. Use /new para criar uma.", nil)
 			return
 		}
 		h.reply(ctx, int64(chatID), "❌ Erro ao buscar partida.", nil)
@@ -556,7 +531,7 @@ func (h *CommandHandler) handleEntrar(ctx context.Context, actorID uno.PlayerID,
 	}
 
 	if outcome.View.Phase == uno.Lobby {
-		h.reply(ctx, int64(chatID), h.renderer.RenderLobby(outcome.View, h.commandLanguage(ctx, chatID)), h.gameMarkup(outcome.View))
+		h.reply(ctx, int64(chatID), h.renderer.RenderLobby(outcome.View), h.gameMarkup(outcome.View))
 	} else {
 		msg := fmt.Sprintf("✅ %s entrou na partida em andamento!", h.renderer.PlayerLink(actorID, outcome.View))
 		if turn := h.renderer.RenderTurn(outcome.View); turn != "" {
@@ -614,7 +589,7 @@ func (h *CommandHandler) handleIniciar(ctx context.Context, actorID uno.PlayerID
 	summary, err := h.service.FindChatGame(ctx, chatID)
 	if err != nil {
 		if errors.Is(err, game.ErrNoActiveGame) || errors.Is(err, game.ErrGameNotFound) {
-			h.reply(ctx, int64(chatID), "⚠️ Nenhuma partida aberta neste grupo. Use /novo para criar uma.", nil)
+			h.reply(ctx, int64(chatID), "⚠️ Nenhuma partida aberta neste grupo. Use /new para criar uma.", nil)
 			return
 		}
 		h.reply(ctx, int64(chatID), "❌ Erro ao buscar partida.", nil)
@@ -753,7 +728,7 @@ func (h *CommandHandler) handleEstado(ctx context.Context, chatID game.ChatID) {
 	summary, err := h.service.FindChatGame(ctx, chatID)
 	if err != nil {
 		if errors.Is(err, game.ErrNoActiveGame) || errors.Is(err, game.ErrGameNotFound) {
-			h.reply(ctx, int64(chatID), "⚠️ Nenhuma partida ativa ou recente encontrada neste grupo. Use /novo para criar uma.", nil)
+			h.reply(ctx, int64(chatID), "⚠️ Nenhuma partida ativa ou recente encontrada neste grupo. Use /new para criar uma.", nil)
 			return
 		}
 		h.reply(ctx, int64(chatID), "❌ Erro ao buscar partida.", nil)
@@ -767,7 +742,7 @@ func (h *CommandHandler) handleEstado(ctx context.Context, chatID game.ChatID) {
 	}
 
 	if view.Phase == uno.Lobby {
-		h.reply(ctx, int64(chatID), h.renderer.RenderLobby(view, h.commandLanguage(ctx, chatID)), makeGameButtons(view))
+		h.reply(ctx, int64(chatID), h.renderer.RenderLobby(view), makeGameButtons(view))
 	} else {
 		h.reply(ctx, int64(chatID), h.renderer.RenderPublicState(view), makeGameButtons(view))
 	}
@@ -856,7 +831,7 @@ func (h *CommandHandler) handleExpulsar(ctx context.Context, msg *telego.Message
 	}
 	target := uno.PlayerID(msg.ReplyToMessage.From.ID)
 	if target == actorID {
-		h.reply(ctx, int64(chatID), "⚠️ Use /sair para sair da partida.", nil)
+		h.reply(ctx, int64(chatID), "⚠️ Use /leave para sair da partida.", nil)
 		return
 	}
 	view, err := h.service.PublicView(ctx, summary.GameID)
@@ -949,6 +924,30 @@ func (h *CommandHandler) handleStats(ctx context.Context, targetChatID int64, st
 		h.replyStats(ctx, targetChatID, "❌ Estatísticas não disponíveis no momento.")
 		return
 	}
+
+	// Both the loading notice and the card quote the /stats command.
+	reply := replyParameters(ctx)
+
+	// The first card can take a few seconds (avatar download + upload). Post
+	// immediate feedback and remove it once the real photo or fallback lands.
+	loadingCtx, cancelLoading := statsContext(ctx, statsFallbackTimeout)
+	loading, err := h.bot.SendMessage(loadingCtx, &telego.SendMessageParams{
+		ChatID:          telego.ChatID{ID: targetChatID},
+		Text:            "⏳ Gerando seu card...",
+		ReplyParameters: reply,
+	})
+	cancelLoading()
+	if err == nil && loading != nil && loading.MessageID != 0 {
+		defer func() {
+			deleteCtx, cancelDelete := statsContext(ctx, statsFallbackTimeout)
+			defer cancelDelete()
+			_ = h.bot.DeleteMessage(deleteCtx, &telego.DeleteMessageParams{
+				ChatID:    telego.ChatID{ID: targetChatID},
+				MessageID: loading.MessageID,
+			})
+		}()
+	}
+
 	totalStart := time.Now()
 	defer h.logSlow(ctx, "total", totalStart, "chat_id", targetChatID, "user_id", actorID)
 
@@ -1035,7 +1034,7 @@ func (h *CommandHandler) handleStats(ctx context.Context, targetChatID int64, st
 				Photo:           telego.InputFile{FileID: fileID},
 				Caption:         caption,
 				ParseMode:       "HTML",
-				ReplyParameters: replyParameters(ctx),
+				ReplyParameters: reply,
 			}
 			sendCtx, cancelSend := statsContext(ctx, statsSendTimeout)
 			sendStart := time.Now()
@@ -1071,7 +1070,7 @@ func (h *CommandHandler) handleStats(ctx context.Context, targetChatID int64, st
 		Photo:           telego.InputFile{File: namedBytes{Reader: bytes.NewReader(card), name: "stats.jpg"}},
 		Caption:         caption,
 		ParseMode:       "HTML",
-		ReplyParameters: replyParameters(ctx),
+		ReplyParameters: reply,
 	}
 	sendCtx, cancelSend := statsContext(ctx, statsSendTimeout)
 	sendStart := time.Now()
@@ -1135,7 +1134,7 @@ func (h *CommandHandler) handleConfig(ctx context.Context, msg *telego.Message) 
 
 	if svc.Repository != nil {
 		if _, err := svc.Repository.GetOrCreateGroupConfig(ctx, chatID); err != nil {
-			h.logger.WarnContext(ctx, "failed to ensure group config in /config", "chat_id", chatID, "error", err)
+			h.logger.WarnContext(ctx, "failed to ensure group config in /settings", "chat_id", chatID, "error", err)
 		} else if h.knownUsers != nil {
 			if err := h.knownUsers.ObserveGroupUser(ctx, groups.KnownUser{
 				ChatID:      chatID,
@@ -1144,7 +1143,7 @@ func (h *CommandHandler) handleConfig(ctx context.Context, msg *telego.Message) 
 				Username:    msg.From.Username,
 				LastSeenAt:  time.Now().UTC(),
 			}); err != nil {
-				h.logger.WarnContext(ctx, "failed to observe user in /config", "chat_id", chatID, "error", err)
+				h.logger.WarnContext(ctx, "failed to observe user in /settings", "chat_id", chatID, "error", err)
 			}
 		}
 	}

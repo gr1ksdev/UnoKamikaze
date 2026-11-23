@@ -68,18 +68,18 @@ func TestCardRepr(t *testing.T) {
 func TestRenderer_WelcomeAndHelp(t *testing.T) {
 	renderer := NewRenderer(nil)
 	welcome := renderer.RenderWelcome()
-	if !strings.Contains(welcome, "Bem-vindo ao UnoKamikaze") || !strings.Contains(welcome, "/ajuda") {
+	if !strings.Contains(welcome, "Bem-vindo ao UnoKamikaze") || !strings.Contains(welcome, "/help") {
 		t.Fatalf("unexpected welcome: %s", welcome)
 	}
 	if strings.Contains(welcome, "V2") || strings.Contains(welcome, "Golang") || strings.Contains(welcome, "desenvolvida em Go") {
 		t.Fatalf("welcome exposed implementation details: %s", welcome)
 	}
 
-	help := renderer.RenderHelp("ExampleBot", groups.CommandsPT)
+	help := renderer.RenderHelp("ExampleBot")
 	if strings.Count(help, "<blockquote>") != 1 || strings.Count(help, "</blockquote>") != 1 {
 		t.Fatalf("help blockquote is malformed: %s", help)
 	}
-	for _, expected := range []string{"<b>/start</b>", "<b>/ajuda</b>", "<b>/novo</b>", "<b>/reset</b>", "@ExampleBot", "Go (Golang)", "@unopybot"} {
+	for _, expected := range []string{"<b>/start</b>", "<b>/help</b>", "<b>/new</b>", "<b>/reset</b>", "@ExampleBot", "Go (Golang)", "@unopybot"} {
 		if !strings.Contains(help, expected) {
 			t.Fatalf("help is missing %q: %s", expected, help)
 		}
@@ -101,12 +101,12 @@ func TestRenderer_RenderLobbyAndState(t *testing.T) {
 		Phase:   uno.Lobby,
 	}
 
-	lobbyText := renderer.RenderLobby(lobbyView, groups.CommandsPT)
+	lobbyText := renderer.RenderLobby(lobbyView)
 	if !strings.Contains(lobbyText, "Alice") || !strings.Contains(lobbyText, "Bob") {
 		t.Errorf("expected players in lobby text: %s", lobbyText)
 	}
-	if !strings.Contains(lobbyText, "/iniciar") {
-		t.Errorf("expected /iniciar mentioned for 2+ players: %s", lobbyText)
+	if !strings.Contains(lobbyText, "/start") {
+		t.Errorf("expected /start mentioned for 2+ players: %s", lobbyText)
 	}
 
 	topCard := uno.Card{ID: "c10", Color: uno.Green, Rank: uno.Five}
@@ -275,7 +275,7 @@ func TestRendererMentionTargetsFollowResultingTurn(t *testing.T) {
 			}
 			text := r.RenderPublicState(v)
 			if tc.phase == uno.Lobby {
-				text = r.RenderLobby(v, groups.CommandsPT)
+				text = r.RenderLobby(v)
 			}
 			assertMentionTargets(t, text, cache, tc.real, 999)
 			for _, action := range []uno.ActionType{uno.PlayCard, uno.DrawCard, uno.PassTurn, uno.ChooseColor} {

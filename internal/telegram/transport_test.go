@@ -151,7 +151,7 @@ func TestWebhookHandlerReturns503WhenDispatcherStopped(t *testing.T) {
 	b := New(newMockBotAPI(), svc, nil, nil, time.Minute, nil)
 	b.dispatcher.Stop(time.Second)
 
-	body := `{"update_id":77,"message":{"message_id":1,"chat":{"id":-1001,"type":"supergroup"},"from":{"id":1,"first_name":"Alice"},"text":"/novo"}}`
+	body := `{"update_id":77,"message":{"message_id":1,"chat":{"id":-1001,"type":"supergroup"},"from":{"id":1,"first_name":"Alice"},"text":"/new"}}`
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(telego.WebhookSecretTokenHeader, "secret")

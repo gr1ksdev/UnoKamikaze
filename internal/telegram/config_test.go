@@ -54,27 +54,6 @@ func (m *mockGroupRepo) SetRankingSystem(ctx context.Context, chatID int64, syst
 	return c, nil
 }
 
-func (m *mockGroupRepo) SetCommandLanguage(_ context.Context, chatID int64, lang groups.CommandLanguage) (groups.Config, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	c, ok := m.configs[chatID]
-	if !ok {
-		c = groups.Defaults(chatID)
-	}
-	c.CommandLanguage = lang
-	c.Revision++
-	m.configs[chatID] = c
-	return c, nil
-}
-func (m *mockGroupRepo) ReadCommandLanguage(_ context.Context, chatID int64) (groups.CommandLanguage, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if c, ok := m.configs[chatID]; ok {
-		return c.CommandLanguage, nil
-	}
-	return groups.CommandsPT, nil
-}
-
 func (m *mockGroupRepo) SetInstalledBy(ctx context.Context, chatID int64, installerID int64) (groups.Config, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -178,17 +157,17 @@ func newTestHarness() *testHarness {
 	}
 }
 
-// 1 & 20: Grupo sem config explícita -> Caseiro + Updated. Setup nunca bloqueia /novo.
+// 1 & 20: Grupo sem config explícita -> Caseiro + Updated. Setup nunca bloqueia /new.
 func TestConfig_DefaultsAndNeverBlocked(t *testing.T) {
 	h := newTestHarness()
 	ctx := t.Context()
 	chatID := int64(-1001)
 
-	// User runs /novo without ever opening /config
+	// User runs /new without ever opening /settings
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: 10, FirstName: "Player1"},
-		Text: "/novo@unokamikaze",
+		Text: "/new@unokamikaze",
 	})
 
 	summary, err := h.svc.FindChatGame(ctx, game.ChatID(chatID))
@@ -207,13 +186,13 @@ func TestConfig_DefaultsAndNeverBlocked(t *testing.T) {
 	}
 }
 
-// 3 & 4: O modo é único. Argumentos de /novo são ignorados e o GroupConfig permanece intacto.
+// 3 & 4: O modo é único. Argumentos de /new são ignorados e o GroupConfig permanece intacto.
 func TestConfig_NovoArgumentsAreIgnored(t *testing.T) {
 	h := newTestHarness()
 	ctx := t.Context()
 	chatID := int64(-1003)
 
-	for _, text := range []string{"/novo@unokamikaze", "/novo@unokamikaze classico", "/novo@unokamikaze caseiro"} {
+	for _, text := range []string{"/new@unokamikaze", "/new@unokamikaze classico", "/new@unokamikaze caseiro"} {
 		h.cmdHandler.HandleMessage(ctx, &telego.Message{
 			Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 			From: &telego.User{ID: 10, FirstName: "Player1"},
@@ -234,7 +213,7 @@ func TestConfig_NovoArgumentsAreIgnored(t *testing.T) {
 		h.cmdHandler.HandleMessage(ctx, &telego.Message{
 			Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 			From: &telego.User{ID: 10, FirstName: "Player1"},
-			Text: "/cancelar@unokamikaze",
+			Text: "/kill@unokamikaze",
 		})
 	}
 }
@@ -250,7 +229,7 @@ func TestConfig_ActiveGamePreservesSnapshotOnConfigChange(t *testing.T) {
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: 10, FirstName: "Admin"},
-		Text: "/novo@unokamikaze",
+		Text: "/new@unokamikaze",
 	})
 	summary, _ := h.svc.FindChatGame(ctx, game.ChatID(chatID))
 
@@ -278,7 +257,7 @@ func TestConfig_ActiveGamePreservesSnapshotOnConfigChange(t *testing.T) {
 	}
 }
 
-// 6, 7, 8: Admin pode abrir /config e alterar modo e ranking.
+// 6, 7, 8: Admin pode abrir /settings e alterar modo e ranking.
 func TestConfig_AdminCanOpenAndModify(t *testing.T) {
 	h := newTestHarness()
 	ctx := t.Context()
@@ -286,11 +265,11 @@ func TestConfig_AdminCanOpenAndModify(t *testing.T) {
 	adminID := int64(10)
 	h.api.ChatMembers[adminID] = &telego.ChatMemberOwner{Status: telego.MemberStatusCreator}
 
-	// Admin runs /config
+	// Admin runs /settings
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: adminID, FirstName: "Creator"},
-		Text: "/config@unokamikaze",
+		Text: "/settings@unokamikaze",
 	})
 
 	if len(h.api.SentMessages) == 0 {
@@ -301,8 +280,8 @@ func TestConfig_AdminCanOpenAndModify(t *testing.T) {
 		t.Fatalf("unexpected message text: %s", lastMsg.Text)
 	}
 	markup, ok := lastMsg.ReplyMarkup.(*telego.InlineKeyboardMarkup)
-	if !ok || markup == nil || len(markup.InlineKeyboard) != 2 {
-		t.Fatalf("expected 2 rows of config buttons, got %+v", lastMsg.ReplyMarkup)
+	if !ok || markup == nil || len(markup.InlineKeyboard) != 1 {
+		t.Fatalf("expected 1 row of config buttons, got %+v", lastMsg.ReplyMarkup)
 	}
 
 	// Admin clicks Legacy ranking button
@@ -319,7 +298,7 @@ func TestConfig_AdminCanOpenAndModify(t *testing.T) {
 	}
 }
 
-// 9: Usuário comum não pode alterar /config nem via comando nem via callback.
+// 9: Usuário comum não pode alterar /settings nem via comando nem via callback.
 func TestConfig_NonAdminCannotModify(t *testing.T) {
 	h := newTestHarness()
 	ctx := t.Context()
@@ -327,11 +306,11 @@ func TestConfig_NonAdminCannotModify(t *testing.T) {
 	regularUserID := int64(20)
 	h.api.ChatMembers[regularUserID] = &telego.ChatMemberMember{Status: telego.MemberStatusMember}
 
-	// Regular user sends /config
+	// Regular user sends /settings
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: regularUserID, FirstName: "Bob"},
-		Text: "/config@unokamikaze",
+		Text: "/settings@unokamikaze",
 	})
 
 	lastMsg := h.api.SentMessages[len(h.api.SentMessages)-1]
@@ -370,11 +349,11 @@ func TestConfig_InstallerStillMemberCanConfigure(t *testing.T) {
 	// User is regular member (not admin)
 	h.api.ChatMembers[installerID] = &telego.ChatMemberMember{Status: telego.MemberStatusMember}
 
-	// Installer runs /config
+	// Installer runs /settings
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: installerID, FirstName: "Installer"},
-		Text: "/config@unokamikaze",
+		Text: "/settings@unokamikaze",
 	})
 
 	lastMsg := h.api.SentMessages[len(h.api.SentMessages)-1]
@@ -411,7 +390,7 @@ func TestConfig_InstallerLeftGroupCannotConfigure(t *testing.T) {
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: installerID, FirstName: "ExMember"},
-		Text: "/config@unokamikaze",
+		Text: "/settings@unokamikaze",
 	})
 
 	lastMsg := h.api.SentMessages[len(h.api.SentMessages)-1]
@@ -437,7 +416,7 @@ func TestConfig_UnknownInstallerAdminsStillWork(t *testing.T) {
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: adminID, FirstName: "Admin"},
-		Text: "/config@unokamikaze",
+		Text: "/settings@unokamikaze",
 	})
 
 	lastMsg := h.api.SentMessages[len(h.api.SentMessages)-1]
@@ -453,7 +432,7 @@ func TestConfig_CallbackRechecksAuthorization(t *testing.T) {
 	chatID := int64(-1013)
 	userID := int64(50)
 
-	// Was admin when /config opened
+	// Was admin when /settings opened
 	h.api.ChatMembers[userID] = &telego.ChatMemberAdministrator{Status: telego.MemberStatusAdministrator}
 
 	// Demoted to normal member before clicking callback
@@ -524,7 +503,7 @@ func TestConfig_RankingChangeKeepsHouseMode(t *testing.T) {
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: adminID, FirstName: "Creator"},
-		Text: "/novo@unokamikaze",
+		Text: "/new@unokamikaze",
 	})
 	summary, err := h.svc.FindChatGame(ctx, game.ChatID(chatID))
 	if err != nil {
@@ -669,11 +648,11 @@ func TestConfig_PersistedSurvivesRestart(t *testing.T) {
 	newBot := newTestBot(api, newSvc, NewTokenStore(100, 10, time.Now, nil), NewRenderer(nil), time.Minute, nil)
 	newBot.SetGroupConfigs(groupRepo)
 
-	// New bot checks /novo
+	// New bot checks /new
 	newBot.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: 10, FirstName: "Player"},
-		Text: "/novo@unokamikaze",
+		Text: "/new@unokamikaze",
 	})
 
 	summary, err := newSvc.FindChatGame(ctx, game.ChatID(chatID))
@@ -686,7 +665,7 @@ func TestConfig_PersistedSurvivesRestart(t *testing.T) {
 	}
 }
 
-// 23: KnownGroupUser atualizado nos novos pontos de interação (my_chat_member, /config, callbacks).
+// 23: KnownGroupUser atualizado nos novos pontos de interação (my_chat_member, /settings, callbacks).
 func TestConfig_KnownUserObservedAtInteractionPoints(t *testing.T) {
 	h := newTestHarness()
 	ctx := t.Context()
@@ -708,16 +687,16 @@ func TestConfig_KnownUserObservedAtInteractionPoints(t *testing.T) {
 		t.Fatalf("expected user 100 observed in my_chat_member, got %+v", u)
 	}
 
-	// 2. /config
+	// 2. /settings
 	h.api.ChatMembers[200] = &telego.ChatMemberAdministrator{Status: telego.MemberStatusAdministrator}
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: 200, FirstName: "AdminConfig", Username: "admin200"},
-		Text: "/config@unokamikaze",
+		Text: "/settings@unokamikaze",
 	})
 	key2 := fmt.Sprintf("%d:%d", chatID, 200)
 	if u, ok := h.userRepo.users[key2]; !ok || u.DisplayName != "AdminConfig" {
-		t.Fatalf("expected user 200 observed in /config, got %+v", u)
+		t.Fatalf("expected user 200 observed in /settings, got %+v", u)
 	}
 
 	// 3. Callback
@@ -794,12 +773,12 @@ func TestConfig_WelcomeButtonOpensConfig(t *testing.T) {
 	if !strings.Contains(edited.Text, "Configuração do Grupo") {
 		t.Fatalf("expected config text in edited message, got: %s", edited.Text)
 	}
-	if edited.ReplyMarkup == nil || len(edited.ReplyMarkup.InlineKeyboard) != 2 {
-		t.Fatalf("expected 3 rows of config buttons, got %+v", edited.ReplyMarkup)
+	if edited.ReplyMarkup == nil || len(edited.ReplyMarkup.InlineKeyboard) != 1 {
+		t.Fatalf("expected 1 row of config buttons, got %+v", edited.ReplyMarkup)
 	}
 }
 
-// Regressão 1: Primeiro /config em grupo sem group_configs prévio observa usuário com sucesso
+// Regressão 1: Primeiro /settings em grupo sem group_configs prévio observa usuário com sucesso
 // após criar a configuração e exibe o menu para administradores.
 func TestConfig_FirstConfigInGroupWithoutExistingConfig_ObservesUser(t *testing.T) {
 	h := newTestHarness()
@@ -815,11 +794,11 @@ func TestConfig_FirstConfigInGroupWithoutExistingConfig_ObservesUser(t *testing.
 	}
 	h.groupRepo.mu.Unlock()
 
-	// Admin executa /config pela primeira vez no grupo
+	// Admin executa /settings pela primeira vez no grupo
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: adminID, FirstName: "AdminNovo", Username: "admin_novo"},
-		Text: "/config@unokamikaze",
+		Text: "/settings@unokamikaze",
 	})
 
 	// 1. Group config deve existir com os defaults (Caseiro + Updated)
@@ -855,7 +834,7 @@ func TestConfig_FirstConfigInGroupWithoutExistingConfig_ObservesUser(t *testing.
 	}
 }
 
-// Regressão 2: Primeiro /config em grupo sem group_configs por usuário comum observa o usuário,
+// Regressão 2: Primeiro /settings em grupo sem group_configs por usuário comum observa o usuário,
 // preserva autorização (bloqueia alteração) e cria a configuração com defaults.
 func TestConfig_FirstConfigInGroupWithoutExistingConfig_NonAdmin_ObservesUserAndPreservesAuth(t *testing.T) {
 	h := newTestHarness()
@@ -871,11 +850,11 @@ func TestConfig_FirstConfigInGroupWithoutExistingConfig_NonAdmin_ObservesUserAnd
 	}
 	h.groupRepo.mu.Unlock()
 
-	// Usuário comum executa /config pela primeira vez no grupo
+	// Usuário comum executa /settings pela primeira vez no grupo
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: regularUserID, FirstName: "ComumNovo", Username: "comum_novo"},
-		Text: "/config@unokamikaze",
+		Text: "/settings@unokamikaze",
 	})
 
 	// 1. Group config deve ter sido criada com defaults
@@ -959,7 +938,7 @@ func TestConfig_CallbackInNewlyCreatedGroup_ObservesUser(t *testing.T) {
 	}
 }
 
-// Tests dynamic updates of the /config summary when the ranking changes.
+// Tests dynamic updates of the /settings summary when the ranking changes.
 func TestConfig_DynamicCallbackUpdates(t *testing.T) {
 	ctx := t.Context()
 	h := newTestHarness()
@@ -973,11 +952,11 @@ func TestConfig_DynamicCallbackUpdates(t *testing.T) {
 		InstalledByUserID: &adminID,
 	}
 
-	// 1. Initial /config command
+	// 1. Initial /settings command
 	h.cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: adminID, FirstName: "Admin"},
-		Text: "/config@unokamikaze",
+		Text: "/settings@unokamikaze",
 	})
 
 	if len(h.api.SentMessages) == 0 {
@@ -1001,10 +980,10 @@ func TestConfig_DynamicCallbackUpdates(t *testing.T) {
 		t.Fatalf("expected 1 blockquote, got %d", strings.Count(initialMsg.Text, "<blockquote>"))
 	}
 
-	// Verify config was not altered merely by opening /config
+	// Verify config was not altered merely by opening /settings
 	cfgInitial := h.groupRepo.configs[chatID]
 	if cfgInitial.RankingSystem != groups.Legacy {
-		t.Fatalf("opening /config mutated state: %+v", cfgInitial)
+		t.Fatalf("opening /settings mutated state: %+v", cfgInitial)
 	}
 
 	// 2. Change ranking to Updated via callback
@@ -1044,7 +1023,7 @@ func TestConfig_DynamicCallbackUpdates(t *testing.T) {
 	}
 
 	// Buttons preserved
-	if editedAfterRank.ReplyMarkup == nil || len(editedAfterRank.ReplyMarkup.InlineKeyboard) != 2 {
+	if editedAfterRank.ReplyMarkup == nil || len(editedAfterRank.ReplyMarkup.InlineKeyboard) != 1 {
 		t.Fatalf("expected 1 row of buttons, got %+v", editedAfterRank.ReplyMarkup)
 	}
 }

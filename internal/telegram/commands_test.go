@@ -28,11 +28,11 @@ func TestCommandHandler_NovoEntrarIniciarCancelar(t *testing.T) {
 	ctx := context.Background()
 	chatID := int64(-100100)
 
-	// 1. /novo by Alice (ID 1)
+	// 1. /new by Alice (ID 1)
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "UNO Fun"},
 		From: &telego.User{ID: 1, FirstName: "Alice", Username: "alice"},
-		Text: "/novo@unokamikaze",
+		Text: "/new@unokamikaze",
 	})
 
 	lastMsg := mockAPI.LastSentMessage()
@@ -53,58 +53,58 @@ func TestCommandHandler_NovoEntrarIniciarCancelar(t *testing.T) {
 		t.Errorf("expected 0 players in lobby, got %d", len(view.Players))
 	}
 
-	// 2. /entrar by Bob (ID 2)
+	// 2. /join by Bob (ID 2)
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "UNO Fun"},
 		From: &telego.User{ID: 2, FirstName: "Bob", Username: "bob"},
-		Text: "/entrar@unokamikaze",
+		Text: "/join@unokamikaze",
 	})
 	lastMsg = mockAPI.LastSentMessage()
 	if !strings.Contains(lastMsg, "Bob") || !strings.Contains(lastMsg, "1/10") {
 		t.Fatalf("expected Bob in lobby, got: %s", lastMsg)
 	}
 
-	// 3. /cancelar attempted by Bob (ID 2) -> should be forbidden because Alice (1) is owner!
+	// 3. /kill attempted by Bob (ID 2) -> should be forbidden because Alice (1) is owner!
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "UNO Fun"},
 		From: &telego.User{ID: 2, FirstName: "Bob", Username: "bob"},
-		Text: "/cancelar@unokamikaze",
+		Text: "/kill@unokamikaze",
 	})
 	lastMsg = mockAPI.LastSentMessage()
 	if !strings.Contains(lastMsg, "Apenas o responsável") {
 		t.Fatalf("expected forbidden error for non-owner cancel, got: %s", lastMsg)
 	}
 
-	// 4. /iniciar attempted by Bob with only 1 player -> should fail (not enough players, not forbidden!)
+	// 4. /start attempted by Bob with only 1 player -> should fail (not enough players, not forbidden!)
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "UNO Fun"},
 		From: &telego.User{ID: 2, FirstName: "Bob", Username: "bob"},
-		Text: "/iniciar@unokamikaze",
+		Text: "/start@unokamikaze",
 	})
 	lastMsg = mockAPI.LastSentMessage()
 	if !strings.Contains(lastMsg, "pelo menos 2 jogadores") {
 		t.Fatalf("expected not enough players error, got: %s", lastMsg)
 	}
 
-	// 5. /entrar by Carol (ID 3)
+	// 5. /join by Carol (ID 3)
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "UNO Fun"},
 		From: &telego.User{ID: 3, FirstName: "Carol", Username: "carol"},
-		Text: "/entrar@unokamikaze",
+		Text: "/join@unokamikaze",
 	})
 
-	// 6. /iniciar by Carol (ID 3) — any player can start once lobby has >= 2 players!
+	// 6. /start by Carol (ID 3) — any player can start once lobby has >= 2 players!
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "UNO Fun"},
 		From: &telego.User{ID: 3, FirstName: "Carol", Username: "carol"},
-		Text: "/iniciar@unokamikaze",
+		Text: "/start@unokamikaze",
 	})
 	lastMsg = mockAPI.LastSentMessage()
 	if !strings.Contains(lastMsg, "Partida iniciada") {
 		t.Fatalf("expected game started message, got: %s", lastMsg)
 	}
 	if len(mockAPI.SentStickers) == 0 {
-		t.Fatalf("expected initial top card sticker to be sent on /iniciar")
+		t.Fatalf("expected initial top card sticker to be sent on /start")
 	}
 
 	// Verify reply markup on the started message has only "🃏 Suas cartas" button (no "Atualizar estado")
@@ -131,22 +131,22 @@ func TestCommandHandler_NovoEntrarIniciarCancelar(t *testing.T) {
 		}
 	}
 
-	// 7. /estado
+	// 7. /state
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "UNO Fun"},
 		From: &telego.User{ID: 2, FirstName: "Bob", Username: "bob"},
-		Text: "/estado@unokamikaze",
+		Text: "/state@unokamikaze",
 	})
 	lastMsg = mockAPI.LastSentMessage()
 	if !strings.Contains(lastMsg, "🃏 Topo:") {
 		t.Fatalf("expected state message, got: %s", lastMsg)
 	}
 
-	// 8. /cancelar by Alice (owner)
+	// 8. /kill by Alice (owner)
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "UNO Fun"},
 		From: &telego.User{ID: 1, FirstName: "Alice", Username: "alice"},
-		Text: "/cancelar@unokamikaze",
+		Text: "/kill@unokamikaze",
 	})
 	lastMsg = mockAPI.LastSentMessage()
 	if !strings.Contains(lastMsg, "Partida cancelada pelo responsável") {
@@ -177,11 +177,11 @@ func TestCommandHandler_FiltersAndAliases(t *testing.T) {
 	cmdHandler := NewCommandHandler(mockAPI, svc, renderer, tokens, "unokamikaze", nil)
 	ctx := context.Background()
 
-	// 1. Command addressed to another bot: /novo@otherbot -> ignored!
+	// 1. Command addressed to another bot: /new@otherbot -> ignored!
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: -1001, Type: "supergroup"},
 		From: &telego.User{ID: 1, FirstName: "User"},
-		Text: "/novo@otherbot",
+		Text: "/new@otherbot",
 	})
 	if len(mockAPI.SentMessages) != 0 {
 		t.Fatalf("expected no response to command addressed to other bot")
@@ -191,7 +191,7 @@ func TestCommandHandler_FiltersAndAliases(t *testing.T) {
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: -1001, Type: "supergroup"},
 		From: &telego.User{ID: 2, FirstName: "BotUser", IsBot: true},
-		Text: "/novo@unokamikaze",
+		Text: "/new@unokamikaze",
 	})
 	if len(mockAPI.SentMessages) != 0 {
 		t.Fatalf("expected no response to bot sender")
@@ -202,7 +202,7 @@ func TestCommandHandler_FiltersAndAliases(t *testing.T) {
 		Chat:       telego.Chat{ID: -1001, Type: "supergroup"},
 		From:       &telego.User{ID: 1, FirstName: "User"},
 		SenderChat: &telego.Chat{ID: -10099, Type: "channel"},
-		Text:       "/novo@unokamikaze",
+		Text:       "/new@unokamikaze",
 	})
 	if !strings.Contains(mockAPI.LastSentMessage(), "não como canal") {
 		t.Fatalf("expected sender chat warning, got: %s", mockAPI.LastSentMessage())
@@ -214,17 +214,17 @@ func TestCommandHandler_FiltersAndAliases(t *testing.T) {
 		From:            &telego.User{ID: 1, FirstName: "User"},
 		IsTopicMessage:  true,
 		MessageThreadID: 42,
-		Text:            "/novo@unokamikaze",
+		Text:            "/new@unokamikaze",
 	})
 	if !strings.Contains(mockAPI.LastSentMessage(), "Tópicos de fórum ainda não são suportados") {
 		t.Fatalf("expected forum topic warning, got: %s", mockAPI.LastSentMessage())
 	}
 
-	// 5. Private chat /ajuda vs /novo
+	// 5. Private chat /help vs /new
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: 100, Type: "private"},
 		From: &telego.User{ID: 100, FirstName: "User"},
-		Text: "/novo@unokamikaze",
+		Text: "/new@unokamikaze",
 	})
 	if !strings.Contains(mockAPI.LastSentMessage(), "Este comando só pode ser utilizado em grupos") {
 		t.Fatalf("expected private chat group warning, got: %s", mockAPI.LastSentMessage())
@@ -233,7 +233,7 @@ func TestCommandHandler_FiltersAndAliases(t *testing.T) {
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: 100, Type: "private"},
 		From: &telego.User{ID: 100, FirstName: "User"},
-		Text: "/ajuda@unokamikaze",
+		Text: "/help@unokamikaze",
 	})
 	if !strings.Contains(mockAPI.LastSentMessage(), "UnoKamikaze — Comandos") {
 		t.Fatalf("expected help text in private chat, got: %s", mockAPI.LastSentMessage())
@@ -243,25 +243,25 @@ func TestCommandHandler_FiltersAndAliases(t *testing.T) {
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: -1002, Type: "supergroup"},
 		From: &telego.User{ID: 1, FirstName: "User"},
-		Text: "/novo@unokamikaze",
+		Text: "/new@unokamikaze",
 	})
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: -1002, Type: "supergroup"},
 		From: &telego.User{ID: 1, FirstName: "User"},
-		Text: "/cancelar@unokamikaze",
+		Text: "/kill@unokamikaze",
 	})
 	if !strings.Contains(mockAPI.LastSentMessage(), "Partida cancelada") {
 		t.Fatalf("expected /kill to act as cancel alias, got: %s", mockAPI.LastSentMessage())
 	}
 
-	// 7. Case-insensitive bot username command: /novo@UNOKAMIKAZE works with unokamikaze
+	// 7. Case-insensitive bot username command: /new@UNOKAMIKAZE works with unokamikaze
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: -1003, Type: "supergroup", Title: "Test Group"},
 		From: &telego.User{ID: 10, FirstName: "Creator"},
-		Text: "/novo@UNOKAMIKAZE",
+		Text: "/new@UNOKAMIKAZE",
 	})
 	if !strings.Contains(mockAPI.LastSentMessage(), "Partida de UNO") {
-		t.Fatalf("expected /novo@UNOKAMIKAZE to work, got: %s", mockAPI.LastSentMessage())
+		t.Fatalf("expected /new@UNOKAMIKAZE to work, got: %s", mockAPI.LastSentMessage())
 	}
 	// Verify creator is NOT auto-enrolled (0 players in lobby)
 	gSummary, err := svc.FindChatGame(ctx, game.ChatID(-1003))
@@ -286,7 +286,7 @@ func TestCommandHandler_PrivateStartAndHelp(t *testing.T) {
 		t.Fatalf("expected one welcome message, got %d", len(mockAPI.SentMessages))
 	}
 	welcome := mockAPI.SentMessages[0]
-	if !strings.Contains(welcome.Text, "Bem-vindo ao UnoKamikaze") || !strings.Contains(welcome.Text, "/ajuda") {
+	if !strings.Contains(welcome.Text, "Bem-vindo ao UnoKamikaze") || !strings.Contains(welcome.Text, "/help") {
 		t.Fatalf("unexpected welcome text: %s", welcome.Text)
 	}
 	for _, forbidden := range []string{"V2", "Golang", "desenvolvida em Go"} {
@@ -303,7 +303,7 @@ func TestCommandHandler_PrivateStartAndHelp(t *testing.T) {
 		t.Fatalf("unexpected add-to-group button: %#v", button)
 	}
 
-	handler.HandleMessage(t.Context(), &telego.Message{Chat: private, From: user, Text: "/ajuda"})
+	handler.HandleMessage(t.Context(), &telego.Message{Chat: private, From: user, Text: "/help"})
 	if len(mockAPI.SentMessages) != 2 {
 		t.Fatalf("expected help response, got %d messages", len(mockAPI.SentMessages))
 	}
@@ -311,7 +311,7 @@ func TestCommandHandler_PrivateStartAndHelp(t *testing.T) {
 	if help.ReplyMarkup != nil {
 		t.Fatalf("help should not repeat the start keyboard: %#v", help.ReplyMarkup)
 	}
-	for _, expected := range []string{"<blockquote>", "</blockquote>", "<b>/novo</b>", "<b>/reset</b>", "@dynamicbot_42", "versão brasileira", "Go (Golang)", "@unopybot"} {
+	for _, expected := range []string{"<blockquote>", "</blockquote>", "<b>/new</b>", "<b>/reset</b>", "@dynamicbot_42", "versão brasileira", "Go (Golang)", "@unopybot"} {
 		if !strings.Contains(help.Text, expected) {
 			t.Fatalf("help is missing %q: %s", expected, help.Text)
 		}
@@ -329,7 +329,7 @@ func TestCommandHandler_StartGroupDeepLinkDoesNotStartGame(t *testing.T) {
 		From: &telego.User{ID: 42, FirstName: "User"},
 		Text: "/start@DynamicBot_42 true",
 	})
-	if !strings.Contains(mockAPI.LastSentMessage(), "UnoKamikaze adicionado") || !strings.Contains(mockAPI.LastSentMessage(), "/novo") {
+	if !strings.Contains(mockAPI.LastSentMessage(), "UnoKamikaze adicionado") || !strings.Contains(mockAPI.LastSentMessage(), "/new") {
 		t.Fatalf("unexpected startgroup response: %s", mockAPI.LastSentMessage())
 	}
 	if _, err := svc.FindChatGame(t.Context(), game.ChatID(chat.ID)); !errors.Is(err, game.ErrNoActiveGame) {
@@ -349,11 +349,11 @@ func TestCommandHandler_ReplyMarkup_OmitsNull(t *testing.T) {
 	cmdHandler := NewCommandHandler(mockAPI, svc, renderer, tokens, "unokamikaze", nil)
 
 	ctx := context.Background()
-	// Trigger a message without markup (e.g., /ajuda)
+	// Trigger a message without markup (e.g., /help)
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: 100, Type: "private"},
 		From: &telego.User{ID: 100, FirstName: "User"},
-		Text: "/ajuda@unokamikaze",
+		Text: "/help@unokamikaze",
 	})
 
 	if len(mockAPI.SentMessages) == 0 {
@@ -384,7 +384,7 @@ func TestCommandHandler_ResetByOwnerInvalidatesStateAndTokens(t *testing.T) {
 	chatID := int64(-2001)
 	owner := int64(10)
 
-	handler.HandleMessage(ctx, &telego.Message{Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "Reset"}, From: &telego.User{ID: owner}, Text: "/novo@unokamikaze"})
+	handler.HandleMessage(ctx, &telego.Message{Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "Reset"}, From: &telego.User{ID: owner}, Text: "/new@unokamikaze"})
 	summary, err := svc.FindChatGame(ctx, game.ChatID(chatID))
 	if err != nil {
 		t.Fatal(err)
@@ -403,7 +403,7 @@ func TestCommandHandler_ResetByOwnerInvalidatesStateAndTokens(t *testing.T) {
 	if _, status := tokens.ConsumeAction(token, uno.PlayerID(owner)); status != ConsumeNotFound {
 		t.Fatalf("old token survived reset: %v", status)
 	}
-	handler.HandleMessage(ctx, &telego.Message{Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "Reset"}, From: &telego.User{ID: owner}, Text: "/novo@unokamikaze"})
+	handler.HandleMessage(ctx, &telego.Message{Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "Reset"}, From: &telego.User{ID: owner}, Text: "/new@unokamikaze"})
 	if _, err := svc.FindChatGame(ctx, game.ChatID(chatID)); err != nil {
 		t.Fatalf("new game failed after reset: %v", err)
 	}
@@ -426,7 +426,7 @@ func TestCommandHandler_ResetByAdminAndRejectMember(t *testing.T) {
 			handler := NewCommandHandler(mockAPI, svc, NewRenderer(NewUserCache(100)), NewTokenStore(100, 10, time.Now, nil), "unokamikaze", nil)
 			ctx := context.Background()
 			chatID := int64(-2100)
-			handler.HandleMessage(ctx, &telego.Message{Chat: telego.Chat{ID: chatID, Type: "supergroup"}, From: &telego.User{ID: 10}, Text: "/novo@unokamikaze"})
+			handler.HandleMessage(ctx, &telego.Message{Chat: telego.Chat{ID: chatID, Type: "supergroup"}, From: &telego.User{ID: 10}, Text: "/new@unokamikaze"})
 			handler.HandleMessage(ctx, &telego.Message{Chat: telego.Chat{ID: chatID, Type: "supergroup"}, From: &telego.User{ID: 20}, Text: "/reset@unokamikaze"})
 			_, err := svc.FindChatGame(ctx, game.ChatID(chatID))
 			if test.allowed && !errors.Is(err, game.ErrNoActiveGame) {
@@ -502,14 +502,14 @@ func TestOrdinaryThreadsAllowCommandsAndReset(t *testing.T) {
 				t.Fatal(err)
 			}
 			h := NewCommandHandler(api, svc, NewRenderer(nil), NewTokenStore(100, 10, time.Now, nil), "unokamikaze", nil)
-			msg := &telego.Message{Chat: telego.Chat{ID: -8001, Type: "supergroup"}, From: &telego.User{ID: 1, FirstName: "Owner"}, MessageThreadID: 42, Text: "/novo@unokamikaze"}
+			msg := &telego.Message{Chat: telego.Chat{ID: -8001, Type: "supergroup"}, From: &telego.User{ID: 1, FirstName: "Owner"}, MessageThreadID: 42, Text: "/new@unokamikaze"}
 			h.HandleMessage(t.Context(), msg)
 			summary, err := svc.FindChatGame(t.Context(), game.ChatID(msg.Chat.ID))
 			if err != nil {
 				t.Fatal(err)
 			}
 			msg.From = &telego.User{ID: 2, FirstName: "Player"}
-			msg.Text = "/entrar@unokamikaze"
+			msg.Text = "/join@unokamikaze"
 			h.HandleMessage(t.Context(), msg)
 			view, err := svc.PublicView(t.Context(), summary.GameID)
 			if err != nil {
@@ -547,7 +547,7 @@ func TestRealTopicsRemainBlockedRegardlessOfThreadID(t *testing.T) {
 		api := newMockBotAPI()
 		svc, _ := game.NewService()
 		h := NewCommandHandler(api, svc, NewRenderer(nil), NewTokenStore(100, 10, time.Now, nil), "unokamikaze", nil)
-		msg := &telego.Message{Chat: telego.Chat{ID: -8002, Type: "supergroup"}, From: &telego.User{ID: 1}, Text: "/novo@unokamikaze"}
+		msg := &telego.Message{Chat: telego.Chat{ID: -8002, Type: "supergroup"}, From: &telego.User{ID: 1}, Text: "/new@unokamikaze"}
 		h.HandleMessage(t.Context(), msg)
 		summary, err := svc.FindChatGame(t.Context(), game.ChatID(msg.Chat.ID))
 		if err != nil {
@@ -559,7 +559,7 @@ func TestRealTopicsRemainBlockedRegardlessOfThreadID(t *testing.T) {
 		}
 		msg.IsTopicMessage = true
 		msg.MessageThreadID = threadID
-		for _, command := range []string{"/entrar", "/reset"} {
+		for _, command := range []string{"/join", "/reset"} {
 			msg.Text = command + "@unokamikaze"
 			h.HandleMessage(t.Context(), msg)
 			if !strings.Contains(api.LastSentMessage(), "Tópicos de fórum") {
@@ -598,7 +598,7 @@ func TestCommandHandler_EntrarRoomLockedAndReentry(t *testing.T) {
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: 10, FirstName: "Owner"},
-		Text: "/novo@unokamikaze",
+		Text: "/new@unokamikaze",
 	})
 
 	// 2. Players 1, 2, 3 join
@@ -606,7 +606,7 @@ func TestCommandHandler_EntrarRoomLockedAndReentry(t *testing.T) {
 		cmdHandler.HandleMessage(ctx, &telego.Message{
 			Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 			From: &telego.User{ID: id, FirstName: fmt.Sprintf("Player%d", id)},
-			Text: "/entrar@unokamikaze",
+			Text: "/join@unokamikaze",
 		})
 	}
 
@@ -614,45 +614,45 @@ func TestCommandHandler_EntrarRoomLockedAndReentry(t *testing.T) {
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: 10, FirstName: "Owner"},
-		Text: "/iniciar@unokamikaze",
+		Text: "/start@unokamikaze",
 	})
 
-	// 4. Player 3 leaves via /sair
+	// 4. Player 3 leaves via /leave
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: 3, FirstName: "Player3"},
-		Text: "/sair@unokamikaze",
+		Text: "/leave@unokamikaze",
 	})
 
-	// 5. Owner locks room via /trancar
+	// 5. Owner locks room via /close
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: 10, FirstName: "Owner"},
-		Text: "/trancar@unokamikaze",
+		Text: "/close@unokamikaze",
 	})
 
-	// 6. Player 3 tries to /entrar while locked -> rejected with room locked message
+	// 6. Player 3 tries to /join while locked -> rejected with room locked message
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: 3, FirstName: "Player3"},
-		Text: "/entrar@unokamikaze",
+		Text: "/join@unokamikaze",
 	})
 	if !strings.Contains(mockAPI.LastSentMessage(), "Esta partida está trancada e não aceita novos jogadores") {
 		t.Fatalf("expected room locked message, got: %s", mockAPI.LastSentMessage())
 	}
 
-	// 7. Owner unlocks room via /destrancar
+	// 7. Owner unlocks room via /open
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: 10, FirstName: "Owner"},
-		Text: "/destrancar@unokamikaze",
+		Text: "/open@unokamikaze",
 	})
 
-	// 8. Player 3 rejoins via /entrar -> accepted!
+	// 8. Player 3 rejoins via /join -> accepted!
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: 3, FirstName: "Player3"},
-		Text: "/entrar@unokamikaze",
+		Text: "/join@unokamikaze",
 	})
 	if !strings.Contains(mockAPI.LastSentMessage(), "entrou na partida em andamento") {
 		t.Fatalf("expected rejoin message, got: %s", mockAPI.LastSentMessage())
@@ -677,19 +677,19 @@ func TestCommandHandler_EntrarAlreadyFinished(t *testing.T) {
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: 10, FirstName: "Owner"},
-		Text: "/novo@unokamikaze",
+		Text: "/new@unokamikaze",
 	})
 	for _, id := range []int64{1, 2, 3} {
 		cmdHandler.HandleMessage(ctx, &telego.Message{
 			Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 			From: &telego.User{ID: id, FirstName: fmt.Sprintf("Player%d", id)},
-			Text: "/entrar@unokamikaze",
+			Text: "/join@unokamikaze",
 		})
 	}
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: 10, FirstName: "Owner"},
-		Text: "/iniciar@unokamikaze",
+		Text: "/start@unokamikaze",
 	})
 
 	summary, err := svc.FindChatGame(ctx, game.ChatID(chatID))
@@ -759,11 +759,11 @@ func TestCommandHandler_EntrarAlreadyFinished(t *testing.T) {
 		t.Skip("no winner reached within 500 steps, skipping placement check")
 	}
 
-	// Winner attempts to /entrar again
+	// Winner attempts to /join again
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup"},
 		From: &telego.User{ID: int64(winnerID), FirstName: "Winner"},
-		Text: "/entrar@unokamikaze",
+		Text: "/join@unokamikaze",
 	})
 	lastMsg := mockAPI.LastSentMessage()
 	if !strings.Contains(lastMsg, "Você já terminou esta partida e não pode entrar novamente") {
@@ -794,25 +794,25 @@ func TestCancelGameByAdminAndCreator(t *testing.T) {
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID1, Type: "supergroup", Title: "UNO Admin Test"},
 		From: &telego.User{ID: 10, FirstName: "CreatorAlice"},
-		Text: "/novo@unokamikaze",
+		Text: "/new@unokamikaze",
 	})
 
 	// Non-admin, non-creator attempts to cancel -> forbidden
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID1, Type: "supergroup", Title: "UNO Admin Test"},
 		From: &telego.User{ID: 20, FirstName: "NormalBob"},
-		Text: "/cancelar@unokamikaze",
+		Text: "/kill@unokamikaze",
 	})
 	lastMsg := mockAPI.LastSentMessage()
 	if !strings.Contains(lastMsg, "Apenas o responsável pela partida ou um administrador") {
 		t.Fatalf("expected forbidden message for normal user, got: %s", lastMsg)
 	}
 
-	// Admin cancels via /cancelar
+	// Admin cancels via /kill
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID1, Type: "supergroup", Title: "UNO Admin Test"},
 		From: &telego.User{ID: 50, FirstName: "AdminUser"},
-		Text: "/cancelar@unokamikaze",
+		Text: "/kill@unokamikaze",
 	})
 	lastMsg = mockAPI.LastSentMessage()
 	if !strings.Contains(lastMsg, "Partida cancelada por um administrador") {
@@ -824,30 +824,30 @@ func TestCancelGameByAdminAndCreator(t *testing.T) {
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID2, Type: "supergroup", Title: "UNO Creator Test"},
 		From: &telego.User{ID: 10, FirstName: "CreatorAlice"},
-		Text: "/novo@unokamikaze",
+		Text: "/new@unokamikaze",
 	})
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID2, Type: "supergroup", Title: "UNO Creator Test"},
 		From: &telego.User{ID: 10, FirstName: "CreatorAlice"},
-		Text: "/entrar@unokamikaze",
+		Text: "/join@unokamikaze",
 	})
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID2, Type: "supergroup", Title: "UNO Creator Test"},
 		From: &telego.User{ID: 20, FirstName: "PlayerBob"},
-		Text: "/entrar@unokamikaze",
+		Text: "/join@unokamikaze",
 	})
 	// Creator leaves, transferring owner to Bob
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID2, Type: "supergroup", Title: "UNO Creator Test"},
 		From: &telego.User{ID: 10, FirstName: "CreatorAlice"},
-		Text: "/sair@unokamikaze",
+		Text: "/leave@unokamikaze",
 	})
 
 	// Creator uses /kill -> succeeds
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID2, Type: "supergroup", Title: "UNO Creator Test"},
 		From: &telego.User{ID: 10, FirstName: "CreatorAlice"},
-		Text: "/cancelar@unokamikaze",
+		Text: "/kill@unokamikaze",
 	})
 	lastMsg = mockAPI.LastSentMessage()
 	if !strings.Contains(lastMsg, "Partida cancelada pelo responsável") {
@@ -873,7 +873,7 @@ func TestNovoCommandReplacesUnstartedLobbyAndProtectsStartedGame(t *testing.T) {
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "UNO Replace Test"},
 		From: &telego.User{ID: 10, FirstName: "Alice"},
-		Text: "/novo@unokamikaze",
+		Text: "/new@unokamikaze",
 	})
 	firstGame, err := svc.FindChatGame(ctx, game.ChatID(chatID))
 	if err != nil {
@@ -884,14 +884,14 @@ func TestNovoCommandReplacesUnstartedLobbyAndProtectsStartedGame(t *testing.T) {
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "UNO Replace Test"},
 		From: &telego.User{ID: 20, FirstName: "Bob"},
-		Text: "/entrar@unokamikaze",
+		Text: "/join@unokamikaze",
 	})
 
-	// 2. User 30 sends /novo on unstarted lobby -> must create fresh clean lobby
+	// 2. User 30 sends /new on unstarted lobby -> must create fresh clean lobby
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "UNO Replace Test"},
 		From: &telego.User{ID: 30, FirstName: "Charlie"},
-		Text: "/novo@unokamikaze",
+		Text: "/new@unokamikaze",
 	})
 
 	secondGame, err := svc.FindChatGame(ctx, game.ChatID(chatID))
@@ -899,7 +899,7 @@ func TestNovoCommandReplacesUnstartedLobbyAndProtectsStartedGame(t *testing.T) {
 		t.Fatalf("failed to find chat game after replace: %v", err)
 	}
 	if secondGame.GameID == firstGame.GameID {
-		t.Fatalf("expected new game ID after /novo on unstarted lobby, but got same ID %s", firstGame.GameID)
+		t.Fatalf("expected new game ID after /new on unstarted lobby, but got same ID %s", firstGame.GameID)
 	}
 
 	// Verify clean lobby message was sent
@@ -912,17 +912,17 @@ func TestNovoCommandReplacesUnstartedLobbyAndProtectsStartedGame(t *testing.T) {
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "UNO Replace Test"},
 		From: &telego.User{ID: 30, FirstName: "Charlie"},
-		Text: "/entrar@unokamikaze",
+		Text: "/join@unokamikaze",
 	})
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "UNO Replace Test"},
 		From: &telego.User{ID: 40, FirstName: "David"},
-		Text: "/entrar@unokamikaze",
+		Text: "/join@unokamikaze",
 	})
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "UNO Replace Test"},
 		From: &telego.User{ID: 30, FirstName: "Charlie"},
-		Text: "/iniciar@unokamikaze",
+		Text: "/start@unokamikaze",
 	})
 
 	startedGame, err := svc.FindChatGame(ctx, game.ChatID(chatID))
@@ -930,11 +930,11 @@ func TestNovoCommandReplacesUnstartedLobbyAndProtectsStartedGame(t *testing.T) {
 		t.Fatalf("expected game to be started, got: %+v, err: %v", startedGame, err)
 	}
 
-	// 4. User 50 sends /novo while match is in progress -> MUST NOT REPLACE!
+	// 4. User 50 sends /new while match is in progress -> MUST NOT REPLACE!
 	cmdHandler.HandleMessage(ctx, &telego.Message{
 		Chat: telego.Chat{ID: chatID, Type: "supergroup", Title: "UNO Replace Test"},
 		From: &telego.User{ID: 50, FirstName: "Eve"},
-		Text: "/novo@unokamikaze",
+		Text: "/new@unokamikaze",
 	})
 
 	blockedMsg := mockAPI.LastSentMessage()
