@@ -486,18 +486,12 @@ func groupRankingSummary(system groups.RankingSystem) (string, string) {
 
 // RenderGroupConfig formats the current group configuration for the /settings command.
 func (r *Renderer) RenderGroupConfig(config groups.Config) string {
-	rankLabel := "Vitória"
-	if config.RankingSystem == groups.Updated {
-		rankLabel = "Colocação"
-	}
 	rankTitle, rankDesc := groupRankingSummary(config.RankingSystem)
-
 	return fmt.Sprintf("⚙️ <b>Configuração do Grupo</b>\n\n"+
-		"<b>Modo de partida:</b> Caseiro\n"+
-		"<b>Sistema de ranking:</b> %s\n\n"+
 		"<blockquote><b>%s</b>\n%s</blockquote>\n\n"+
-		"<i>Selecione abaixo para alterar.\nAs mudanças afetarão apenas as próximas partidas criadas.</i>",
-		rankLabel, rankTitle, rankDesc)
+		"Selecione abaixo para alterar.\n"+
+		"As mudanças afetarão apenas as próximas partidas criadas.",
+		rankTitle, rankDesc)
 }
 
 // RenderPlayerStats formats the accumulated history of one player.

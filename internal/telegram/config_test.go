@@ -964,12 +964,6 @@ func TestConfig_DynamicCallbackUpdates(t *testing.T) {
 	}
 	initialMsg := h.api.SentMessages[len(h.api.SentMessages)-1]
 
-	if !strings.Contains(initialMsg.Text, "<b>Modo de partida:</b> Caseiro") {
-		t.Fatalf("expected Caseiro mode header in: %s", initialMsg.Text)
-	}
-	if !strings.Contains(initialMsg.Text, "<b>Sistema de ranking:</b> Vitória") {
-		t.Fatalf("expected Legacy ranking header in: %s", initialMsg.Text)
-	}
 	if !strings.Contains(initialMsg.Text, "<blockquote><b>🏆 Vitória</b>\nQuem não ficou em último recebe +1 ponto.</blockquote>") {
 		t.Fatalf("expected Legacy summary in: %s", initialMsg.Text)
 	}
@@ -1004,7 +998,7 @@ func TestConfig_DynamicCallbackUpdates(t *testing.T) {
 		t.Fatalf("expected ParseMode HTML, got %s", editedAfterRank.ParseMode)
 	}
 
-	if !strings.Contains(editedAfterRank.Text, "<b>Sistema de ranking:</b> Colocação") {
+	if !strings.Contains(editedAfterRank.Text, "<blockquote><b>🏆 Colocação</b>") {
 		t.Fatalf("expected Updated rank header in: %s", editedAfterRank.Text)
 	}
 	if !strings.Contains(editedAfterRank.Text, "<blockquote><b>🏆 Colocação</b>\nOs pontos seguem a posição final: quanto melhor, mais pontos.</blockquote>") {
@@ -1013,10 +1007,6 @@ func TestConfig_DynamicCallbackUpdates(t *testing.T) {
 	// Old Legacy summary must disappear
 	if strings.Contains(editedAfterRank.Text, "🏆 Vitória") {
 		t.Fatalf("old Legacy summary did not disappear after rank change: %s", editedAfterRank.Text)
-	}
-	// House mode is fixed
-	if !strings.Contains(editedAfterRank.Text, "<b>Modo de partida:</b> Caseiro") {
-		t.Fatalf("expected Caseiro mode preserved in: %s", editedAfterRank.Text)
 	}
 	if strings.Count(editedAfterRank.Text, "<blockquote>") != 1 {
 		t.Fatalf("expected 1 blockquote in edited message, got %d", strings.Count(editedAfterRank.Text, "<blockquote>"))

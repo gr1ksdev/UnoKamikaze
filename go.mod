@@ -3,6 +3,7 @@ module github.com/gr1ksdev/UnoKamikaze
 go 1.26.3
 
 require (
+	github.com/gogpu/gg v0.52.7
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/joho/godotenv v1.5.1
 	github.com/mymmrac/telego v1.10.0

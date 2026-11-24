@@ -385,14 +385,14 @@ func TestRenderer_RenderGroupConfig(t *testing.T) {
 		{
 			name:           "Legacy",
 			system:         groups.Legacy,
-			wantRankHeader: "<b>Sistema de ranking:</b> Vitória",
+			wantRankHeader: "<blockquote><b>🏆 Vitória</b>",
 			wantRankBlock:  "<blockquote><b>🏆 Vitória</b>\nQuem não ficou em último recebe +1 ponto.</blockquote>",
 			unwantSummary:  "🏆 Colocação",
 		},
 		{
 			name:           "Updated",
 			system:         groups.Updated,
-			wantRankHeader: "<b>Sistema de ranking:</b> Colocação",
+			wantRankHeader: "<blockquote><b>🏆 Colocação</b>",
 			wantRankBlock:  "<blockquote><b>🏆 Colocação</b>\nOs pontos seguem a posição final: quanto melhor, mais pontos.</blockquote>",
 			unwantSummary:  "🏆 Vitória",
 		},
@@ -404,9 +404,6 @@ func TestRenderer_RenderGroupConfig(t *testing.T) {
 
 			if !strings.Contains(got, "⚙️ <b>Configuração do Grupo</b>") {
 				t.Fatalf("missing title in: %s", got)
-			}
-			if !strings.Contains(got, "<b>Modo de partida:</b> Caseiro") {
-				t.Fatalf("missing mode header in: %s", got)
 			}
 			if !strings.Contains(got, tc.wantRankHeader) {
 				t.Fatalf("missing rank header %q in: %s", tc.wantRankHeader, got)

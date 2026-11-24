@@ -14,3 +14,15 @@ var StatsCard []byte
 //
 //go:embed fonts/DejaVuSans-Bold.ttf
 var StatsFont []byte
+
+// Extra fonts used by the rich renderer for glyphs DejaVu does not carry.
+// They are OFL-licensed; see fonts/LICENSE-Noto-AND-STIX.txt.
+//
+//go:embed fonts/NotoSansSinhala.ttf
+var SinhalaFont []byte
+
+//go:embed fonts/NotoColorEmoji.ttf
+var ColorEmojiFont []byte
+
+//go:embed fonts/STIXTwoMath.otf
+var MathFont []byte

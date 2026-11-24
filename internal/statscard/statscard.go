@@ -11,7 +11,6 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
-	"image/jpeg"
 	"image/png" // decode the template; jpeg also registers its decoder for avatars
 	"math"
 	"strings"
@@ -23,7 +22,6 @@ import (
 	xdraw "golang.org/x/image/draw"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
-	"golang.org/x/image/math/fixed"
 )
 
 // Canvas is the size of assets/stickers/stats/card.png.
@@ -39,7 +37,7 @@ const (
 
 	// TemplateVersion changes whenever the template, the drawing code or the
 	// output size changes, so cached file_ids from an older build are not reused.
-	TemplateVersion = "stats-card-v3-1280"
+	TemplateVersion = "stats-card-v4-rich"
 )
 
 const fontScale = float64(outputWidth) / float64(width)
@@ -165,107 +163,17 @@ func newFace(size float64) (font.Face, error) {
 	return face, nil
 }
 
-// Render draws the data onto a copy of the template and returns JPEG bytes.
-func Render(d Data) ([]byte, error) {
-	base, err := baseTemplate()
-	if err != nil {
-		return nil, err
-	}
-	canvas := canvasPool.Get().(*image.RGBA)
-	defer canvasPool.Put(canvas)
-	draw.Draw(canvas, canvas.Bounds(), base, base.Bounds().Min, draw.Src)
-
-	if err := drawAvatar(canvas, d.Avatar, d.Name); err != nil {
-		return nil, err
-	}
-	if err := drawName(canvas, d.Name); err != nil {
-		return nil, err
-	}
-	if d.HasHistory {
-		if err := drawStat(canvas, gamesBox, d.Games); err != nil {
-			return nil, err
-		}
-		if err := drawStat(canvas, winsBox, d.Wins); err != nil {
-			return nil, err
-		}
-	}
-
-	var out bytes.Buffer
-	// A 1280x720 JPEG is ~120 KB instead of ~216 KB, which cuts the Telegram
-	// upload substantially. The file_id is reused afterwards.
-	if err := jpeg.Encode(&out, canvas, &jpeg.Options{Quality: outputQuality}); err != nil {
-		return nil, fmt.Errorf("statscard: encode jpeg: %w", err)
-	}
-	return out.Bytes(), nil
-}
-
-func drawAvatar(canvas *image.RGBA, avatar []byte, name string) error {
+// drawAvatar composites a player's profile photo into the circular slot.
+// Render handles the no-photo case with rich initials.
+func drawAvatar(canvas *image.RGBA, avatar []byte) error {
 	circle := avatarCircle()
-	side := min(circle.Dx(), circle.Dy())
-	mask := avatarMask()
-
-	if len(avatar) > 0 {
-		src, _, err := image.Decode(bytes.NewReader(avatar))
-		if err == nil {
-			scaled := image.NewRGBA(circle)
-			xdraw.CatmullRom.Scale(scaled, circle, src, centeredSquare(src.Bounds()), draw.Over, nil)
-			draw.DrawMask(canvas, circle, scaled, circle.Min, mask, circle.Min, draw.Over)
-			return nil
-		}
-		// An invalid or unsupported photo falls back to initials rather than
-		// failing the whole command.
-	}
-
-	face, err := newFace(float64(side) * 0.42)
+	src, _, err := image.Decode(bytes.NewReader(avatar))
 	if err != nil {
 		return err
 	}
-	defer face.Close()
-
-	filled := image.NewRGBA(circle)
-	draw.Draw(filled, circle, &image.Uniform{C: initialFill}, image.Point{}, draw.Src)
-	draw.DrawMask(canvas, circle, filled, circle.Min, mask, circle.Min, draw.Over)
-
-	initials := nameInitials(name)
-	dr := &font.Drawer{Dst: canvas, Src: image.NewUniform(textColor), Face: face}
-	w := dr.MeasureString(initials).Round()
-	baseline := circle.Min.Y + (side*65)/100
-	dr.Dot = fixed.P(circle.Min.X+(side-w)/2, baseline)
-	dr.DrawString(initials)
-	return nil
-}
-
-func drawName(canvas *image.RGBA, name string) error {
-	size := 58 * fontScale
-	face, err := newFace(size)
-	if err != nil {
-		return err
-	}
-	defer face.Close()
-
-	text := fitText(name, face, nameBox.Dx())
-	dr := &font.Drawer{Dst: canvas, Src: image.NewUniform(textColor), Face: face}
-	w := dr.MeasureString(text).Round()
-	dr.Dot = fixed.P(nameBox.Min.X+(nameBox.Dx()-w)/2, nameBox.Min.Y+(nameBox.Dy()+int(size))/2)
-	dr.DrawString(text)
-	return nil
-}
-
-func drawStat(canvas *image.RGBA, box image.Rectangle, value int64) error {
-	size := 96 * fontScale
-	face, err := newFace(size)
-	if err != nil {
-		return err
-	}
-	defer face.Close()
-
-	// The template reserves the left third of each box for its icon.
-	area := image.Rect(box.Min.X+box.Dx()/3, box.Min.Y, box.Max.X-12, box.Max.Y)
-	text := fitText(fmt.Sprintf("%d", value), face, area.Dx())
-	dr := &font.Drawer{Dst: canvas, Src: image.NewUniform(textColor), Face: face}
-	w := dr.MeasureString(text).Round()
-	dr.Dot = fixed.P(area.Min.X+(area.Dx()-w)/2, area.Min.Y+(area.Dy()+int(size))/2)
-	dr.DrawString(text)
+	scaled := image.NewRGBA(circle)
+	xdraw.CatmullRom.Scale(scaled, circle, src, centeredSquare(src.Bounds()), draw.Over, nil)
+	draw.DrawMask(canvas, circle, scaled, circle.Min, avatarMask(), circle.Min, draw.Over)
 	return nil
 }
 
@@ -295,25 +203,6 @@ func circleMask(r image.Rectangle) *image.Alpha {
 		}
 	}
 	return mask
-}
-
-func fitText(text string, face font.Face, maxWidth int) string {
-	if maxWidth <= 0 {
-		return ""
-	}
-	dr := &font.Drawer{Face: face}
-	if dr.MeasureString(text).Round() <= maxWidth {
-		return text
-	}
-	runes := []rune(text)
-	for len(runes) > 0 {
-		runes = runes[:len(runes)-1]
-		candidate := string(runes) + "…"
-		if dr.MeasureString(candidate).Round() <= maxWidth {
-			return candidate
-		}
-	}
-	return ""
 }
 
 func nameInitials(name string) string {
