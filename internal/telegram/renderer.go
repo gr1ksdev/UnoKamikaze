@@ -488,7 +488,7 @@ func groupRankingSummary(system groups.RankingSystem) (string, string) {
 func (r *Renderer) RenderGroupConfig(config groups.Config) string {
 	rankTitle, rankDesc := groupRankingSummary(config.RankingSystem)
 	return fmt.Sprintf("⚙️ <b>Configuração do Grupo</b>\n\n"+
-		"<blockquote><b>%s</b>\n%s</blockquote>\n\n"+
+		"<blockquote><b>%s</b>\n<i>%s</i></blockquote>\n\n"+
 		"Selecione abaixo para alterar.\n"+
 		"As mudanças afetarão apenas as próximas partidas criadas.",
 		rankTitle, rankDesc)

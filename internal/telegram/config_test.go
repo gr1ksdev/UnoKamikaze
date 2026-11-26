@@ -964,7 +964,7 @@ func TestConfig_DynamicCallbackUpdates(t *testing.T) {
 	}
 	initialMsg := h.api.SentMessages[len(h.api.SentMessages)-1]
 
-	if !strings.Contains(initialMsg.Text, "<blockquote><b>🏆 Vitória</b>\nQuem não ficou em último recebe +1 ponto.</blockquote>") {
+	if !strings.Contains(initialMsg.Text, "<blockquote><b>🏆 Vitória</b>\n<i>Quem não ficou em último recebe +1 ponto.</i></blockquote>") {
 		t.Fatalf("expected Legacy summary in: %s", initialMsg.Text)
 	}
 	if strings.Contains(initialMsg.Text, "🏆 Colocação") {
@@ -1001,7 +1001,7 @@ func TestConfig_DynamicCallbackUpdates(t *testing.T) {
 	if !strings.Contains(editedAfterRank.Text, "<blockquote><b>🏆 Colocação</b>") {
 		t.Fatalf("expected Updated rank header in: %s", editedAfterRank.Text)
 	}
-	if !strings.Contains(editedAfterRank.Text, "<blockquote><b>🏆 Colocação</b>\nOs pontos seguem a posição final: quanto melhor, mais pontos.</blockquote>") {
+	if !strings.Contains(editedAfterRank.Text, "<blockquote><b>🏆 Colocação</b>\n<i>Os pontos seguem a posição final: quanto melhor, mais pontos.</i></blockquote>") {
 		t.Fatalf("expected Updated summary in: %s", editedAfterRank.Text)
 	}
 	// Old Legacy summary must disappear

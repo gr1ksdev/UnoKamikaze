@@ -148,22 +148,23 @@ func makePrivateStartButtons(botUsername string) *telego.InlineKeyboardMarkup {
 }
 
 func makeGroupConfigButtons(config groups.Config) *telego.InlineKeyboardMarkup {
-	legacyText := "🔴 Vitória"
-	updatedText := "🔴 Colocação"
+	legacyStyle, updatedStyle := telego.ButtonStyleDanger, telego.ButtonStyleDanger
 	if config.RankingSystem == groups.Updated {
-		updatedText = "🟢 Colocação"
+		updatedStyle = telego.ButtonStyleSuccess
 	} else {
-		legacyText = "🟢 Vitória"
+		legacyStyle = telego.ButtonStyleSuccess
 	}
 
 	return &telego.InlineKeyboardMarkup{
 		InlineKeyboard: [][]telego.InlineKeyboardButton{{
 			{
-				Text:         legacyText,
+				Text:         "Vitória",
+				Style:        legacyStyle,
 				CallbackData: fmt.Sprintf("cfg_rank_legacy_%d", config.ChatID),
 			},
 			{
-				Text:         updatedText,
+				Text:         "Colocação",
+				Style:        updatedStyle,
 				CallbackData: fmt.Sprintf("cfg_rank_updated_%d", config.ChatID),
 			},
 		}},

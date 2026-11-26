@@ -386,14 +386,14 @@ func TestRenderer_RenderGroupConfig(t *testing.T) {
 			name:           "Legacy",
 			system:         groups.Legacy,
 			wantRankHeader: "<blockquote><b>🏆 Vitória</b>",
-			wantRankBlock:  "<blockquote><b>🏆 Vitória</b>\nQuem não ficou em último recebe +1 ponto.</blockquote>",
+			wantRankBlock:  "<blockquote><b>🏆 Vitória</b>\n<i>Quem não ficou em último recebe +1 ponto.</i></blockquote>",
 			unwantSummary:  "🏆 Colocação",
 		},
 		{
 			name:           "Updated",
 			system:         groups.Updated,
 			wantRankHeader: "<blockquote><b>🏆 Colocação</b>",
-			wantRankBlock:  "<blockquote><b>🏆 Colocação</b>\nOs pontos seguem a posição final: quanto melhor, mais pontos.</blockquote>",
+			wantRankBlock:  "<blockquote><b>🏆 Colocação</b>\n<i>Os pontos seguem a posição final: quanto melhor, mais pontos.</i></blockquote>",
 			unwantSummary:  "🏆 Vitória",
 		},
 	}
