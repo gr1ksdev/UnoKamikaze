@@ -99,8 +99,55 @@ func TestStatsPrivateSendsPhotoToTheRequestingChat(t *testing.T) {
 	if len(api.DeletedMessages) != 1 || api.DeletedMessages[0].MessageID != 1 {
 		t.Fatalf("loading message not removed: %+v", api.DeletedMessages)
 	}
-	if strings.Contains(api.SentPhotos[0].Caption, " em ") {
-		t.Fatalf("private caption should have no scope: %s", api.SentPhotos[0].Caption)
+	for _, want := range []string{"Suas estatísticas globais", "<blockquote>", "<b>Pontos:</b>", "7,00 pts", "Soma das partidas pontuadas em todos os grupos", "Não há posição global"} {
+		if !strings.Contains(api.SentPhotos[0].Caption, want) {
+			t.Fatalf("private caption missing %q: %s", want, api.SentPhotos[0].Caption)
+		}
+	}
+	if strings.Contains(api.SentPhotos[0].Caption, "Suas estatísticas em ") {
+		t.Fatalf("private caption leaked a group scope: %s", api.SentPhotos[0].Caption)
+	}
+}
+
+func TestStatsPrivateFallbackShowsGlobalStats(t *testing.T) {
+	api := newMockBotAPI()
+	api.SendPhotoErr = errors.New("telegram: photo failed")
+	h := statsHandler(t, api, nil, func(context.Context, int64, int64, time.Time) (ranking.PlayerStats, error) {
+		return ranking.PlayerStats{System: groups.Updated, Games: 3, Wins: 1, Score: 700, BestPosition: 1, AvgPosition: "2.14"}, nil
+	})
+	h.HandleMessage(t.Context(), &telego.Message{
+		MessageID: 778,
+		Chat:      telego.Chat{ID: 555, Type: "private"},
+		From:      &telego.User{ID: 42, FirstName: "Ana"},
+		Text:      "/stats",
+	})
+	fallback := api.SentMessages[len(api.SentMessages)-1].Text
+	for _, want := range []string{"Suas estatísticas globais", "<blockquote>", "<b>Partidas pontuadas:</b> 3", "<b>Vitórias:</b> 1", "<b>Pontos:</b>", "7,00 pts", "<b>Melhor colocação:</b> 1º", "<b>Colocação média:</b> 2.14", "Soma das partidas pontuadas em todos os grupos"} {
+		if !strings.Contains(fallback, want) {
+			t.Fatalf("private fallback missing %q: %s", want, fallback)
+		}
+	}
+}
+
+func TestStatsPrivateWithoutHistorySaysNoGames(t *testing.T) {
+	api := newMockBotAPI()
+	h := statsHandler(t, api, nil, func(context.Context, int64, int64, time.Time) (ranking.PlayerStats, error) {
+		return ranking.PlayerStats{System: groups.Updated}, nil
+	})
+	h.HandleMessage(t.Context(), &telego.Message{
+		Chat: telego.Chat{ID: 555, Type: "private"},
+		From: &telego.User{ID: 42, FirstName: "Ana"},
+		Text: "/stats",
+	})
+	if len(api.SentPhotos) != 1 {
+		t.Fatalf("sent %d photos, want 1", len(api.SentPhotos))
+	}
+	caption := api.SentPhotos[0].Caption
+	if !strings.Contains(caption, "Suas estatísticas globais") || !strings.Contains(caption, "Você ainda não tem partidas pontuadas em nenhum grupo") {
+		t.Fatalf("unexpected private caption: %s", caption)
+	}
+	if strings.Contains(caption, "<blockquote>") {
+		t.Fatalf("empty stats must not render a blockquote: %s", caption)
 	}
 }
 

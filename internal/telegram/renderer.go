@@ -454,21 +454,38 @@ func (r *Renderer) RenderHelp(botUsername string) string {
 	}
 	sb.WriteString("</blockquote>\n\n")
 
-	sb.WriteString("Em grupos, todos os comandos precisam mencionar este bot. No privado, o sufixo é opcional.\n")
+	sb.WriteString("Em grupos, mencionar o bot: ")
 	if botUsername != "" {
-		sb.WriteString(fmt.Sprintf("Exemplo: <code>/join@%s</code>\n\n", html.EscapeString(strings.TrimPrefix(botUsername, "@"))))
-	}
-	sb.WriteString("<b>Como jogar suas cartas:</b>\n")
-	sb.WriteString("Quando for a sua vez, clique no botão <b>Suas cartas</b> ou digite no chat:\n")
-	if botUsername != "" {
-		sb.WriteString(fmt.Sprintf("<code>@%s</code>\n\n", html.EscapeString(strings.TrimPrefix(botUsername, "@"))))
+		sb.WriteString(fmt.Sprintf("<code>/join@%s</code>. ", html.EscapeString(strings.TrimPrefix(botUsername, "@"))))
 	} else {
-		sb.WriteString("<code>@seubot</code>\n\n")
+		sb.WriteString("<code>/join@seubot</code>. ")
 	}
-	sb.WriteString("Sua mão privada aparecerá no menu inline. Toque em uma carta jogável (colorida) para jogá-la! ")
-	sb.WriteString("A carta 🔀 Trocar cartas permite escolher outro jogador ou manter a mão, e depois a cor. ")
-	sb.WriteString("Se a vítima tiver o 🚫 da cor escolhida, ela poderá bloquear a troca pelo menu privado. ")
-	sb.WriteString("A confirmação oficial e o estado atualizado serão enviados no grupo.\n\n")
+	sb.WriteString("No privado, o sufixo é opcional.\n\n")
+
+	sb.WriteString("<b>Como jogar:</b> toque em 🃏 <b>Suas cartas</b> ou digite ")
+	if botUsername != "" {
+		sb.WriteString(fmt.Sprintf("<code>@%s</code>. ", html.EscapeString(strings.TrimPrefix(botUsername, "@"))))
+	} else {
+		sb.WriteString("<code>@seubot</code>. ")
+	}
+	sb.WriteString("Sua mão aparece no menu inline — cartas jogáveis em cor, as demais em cinza. ")
+	sb.WriteString("O grupo vê a jogada e <code>Vez de: Fulano</code>; use <code>/state</code> para o estado completo.\n\n")
+
+	sb.WriteString("<blockquote>")
+	sb.WriteString("📜 <b>Regras</b>\n")
+	sb.WriteString("• <b>Objetivo:</b> zerar a mão. A partida segue até restar um jogador; a ordem de saída define a colocação.\n")
+	sb.WriteString("• <b>Cartas:</b> 7 por jogador. Jogue uma carta da cor ativa ou com o mesmo número/símbolo. Coringa e +4 escolhem a cor.\n")
+	sb.WriteString("• <b>Comprar:</b> sem jogada, compre 1 carta. Se ela servir, jogue-a ou passe; se não, a vez passa. Uma compra por turno.\n")
+	sb.WriteString("• <b>Efeitos:</b> 🚫 pula o próximo; 🔄 inverte a direção (com 2 jogadores, funciona como 🚫); +2 e +4 fazem o próximo comprar e perder a vez.\n")
+	sb.WriteString("• <b>Empilhamento:</b> +2 sobre +2, +4 sobre +4, +4 sobre +2 e +2 da cor escolhida sobre +4. Quem não empilhar compra o total acumulado.\n")
+	sb.WriteString("• <b>Blefe do +4:</b> o alvo pode contestar no menu. Se o autor tinha a cor ativa, ele compra a penalidade; se não tinha, quem contestou compra a penalidade + 2 cartas.\n")
+	sb.WriteString("• <b>🔀 Trocar cartas:</b> escolha um alvo (ou manter a mão) e uma cor. O alvo decide no menu: entregar a mão, bloquear com o 🚫 da cor escolhida (perde a próxima vez) ou deixar o prazo acabar — a troca acontece.\n")
+	sb.WriteString("• <b>UNO:</b> anunciado automaticamente quando alguém fica com 1 carta.\n")
+	sb.WriteString("• <b>Tempo:</b> sem ação no prazo, o turno é pulado; cada pulo reduz o cronômetro daquele jogador (piso de 15s). <code>/skip</code> do próprio jogador é livre; de terceiros, só após o prazo.\n")
+	sb.WriteString("• <b>Limites:</b> até 10 jogadores por partida e 1 partida ativa por grupo.\n")
+	sb.WriteString("• <b>Ranking:</b> mensal por grupo; <code>/settings</code> alterna entre Vitória e Colocação.")
+	sb.WriteString("</blockquote>\n\n")
+
 	sb.WriteString("🇧🇷 Esta é uma versão brasileira desenvolvida em Go (Golang), baseada no @unopybot.")
 	return sb.String()
 }
@@ -494,20 +511,46 @@ func (r *Renderer) RenderGroupConfig(config groups.Config) string {
 		rankTitle, rankDesc)
 }
 
+// renderGlobalStats formats the aggregate across every group. The photo
+// already carries games and wins, so the caption keeps only the remaining
+// history; the text fallback has no photo and shows all of it.
+func renderGlobalStats(stats ranking.PlayerStats, includeGames bool) string {
+	var sb strings.Builder
+	sb.WriteString("📊 <b>Suas estatísticas globais</b>\n\n")
+	if !stats.HasHistory() {
+		sb.WriteString("Você ainda não tem partidas pontuadas em nenhum grupo.")
+		return sb.String()
+	}
+	sb.WriteString("<blockquote>")
+	if includeGames {
+		sb.WriteString(fmt.Sprintf("🎮 <b>Partidas pontuadas:</b> %d\n", stats.Games))
+		sb.WriteString(fmt.Sprintf("🏆 <b>Vitórias:</b> %d\n", stats.Wins))
+	}
+	sb.WriteString(fmt.Sprintf("💠 <b>Pontos:</b> %s\n", ranking.FormatScore(stats.System, stats.Score)))
+	if stats.BestPosition > 0 {
+		sb.WriteString(fmt.Sprintf("🥇 <b>Melhor colocação:</b> %dº\n", stats.BestPosition))
+	}
+	if stats.AvgPosition != "" {
+		sb.WriteString(fmt.Sprintf("📉 <b>Colocação média:</b> %s\n", stats.AvgPosition))
+	}
+	sb.WriteString("</blockquote>\n\n")
+	sb.WriteString("Soma das partidas pontuadas em todos os grupos.")
+	if !includeGames {
+		sb.WriteString(" Não há posição global: o ranking é mensal por grupo — use <code>/ranking</code> para ver os seus.")
+	}
+	return sb.String()
+}
+
 // RenderPlayerStats formats the accumulated history of one player.
 func (r *Renderer) RenderPlayerStats(stats ranking.PlayerStats, scope string) string {
+	if scope == "" {
+		return renderGlobalStats(stats, true)
+	}
 	if !stats.HasHistory() {
-		if scope == "" {
-			return "📊 <b>Suas estatísticas</b>\n\nVocê ainda não tem partidas pontuadas."
-		}
 		return fmt.Sprintf("📊 <b>Suas estatísticas em %s</b>\n\nVocê ainda não tem partidas pontuadas aqui.", scope)
 	}
 	var sb strings.Builder
-	sb.WriteString("📊 <b>Suas estatísticas")
-	if scope != "" {
-		sb.WriteString(" em " + scope)
-	}
-	sb.WriteString("</b>\n\n")
+	sb.WriteString(fmt.Sprintf("📊 <b>Suas estatísticas em %s</b>\n\n", scope))
 	sb.WriteString(fmt.Sprintf("Partidas pontuadas: %d\n", stats.Games))
 	sb.WriteString(fmt.Sprintf("Vitórias: %d\n", stats.Wins))
 	sb.WriteString(fmt.Sprintf("Pontos: %s\n", ranking.FormatScore(stats.System, stats.Score)))
@@ -526,18 +569,13 @@ func (r *Renderer) RenderPlayerStats(stats ranking.PlayerStats, scope string) st
 // RenderStatsCaption carries the stats that do not fit on the photo. The card
 // itself shows games and wins; the caption keeps the remaining history visible.
 func (r *Renderer) RenderStatsCaption(stats ranking.PlayerStats, scope string) string {
-	var sb strings.Builder
-	sb.WriteString("📊 <b>Suas estatísticas")
-	if scope != "" {
-		sb.WriteString(" em " + html.EscapeString(scope))
+	if scope == "" {
+		return renderGlobalStats(stats, false)
 	}
-	sb.WriteString("</b>\n\n")
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("📊 <b>Suas estatísticas em %s</b>\n\n", html.EscapeString(scope)))
 	if !stats.HasHistory() {
-		sb.WriteString("Você ainda não tem partidas pontuadas")
-		if scope != "" {
-			sb.WriteString(" aqui")
-		}
-		sb.WriteString(".")
+		sb.WriteString("Você ainda não tem partidas pontuadas aqui.")
 		return sb.String()
 	}
 	sb.WriteString(fmt.Sprintf("Pontos: %s\n", ranking.FormatScore(stats.System, stats.Score)))

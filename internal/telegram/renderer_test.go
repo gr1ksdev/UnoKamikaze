@@ -76,13 +76,16 @@ func TestRenderer_WelcomeAndHelp(t *testing.T) {
 	}
 
 	help := renderer.RenderHelp("ExampleBot")
-	if strings.Count(help, "<blockquote>") != 1 || strings.Count(help, "</blockquote>") != 1 {
-		t.Fatalf("help blockquote is malformed: %s", help)
+	if strings.Count(help, "<blockquote>") != 2 || strings.Count(help, "</blockquote>") != 2 {
+		t.Fatalf("help blockquotes are malformed: %s", help)
 	}
-	for _, expected := range []string{"<b>/start</b>", "<b>/help</b>", "<b>/new</b>", "<b>/reset</b>", "@ExampleBot", "Go (Golang)", "@unopybot"} {
+	for _, expected := range []string{"<b>/start</b>", "<b>/help</b>", "<b>/new</b>", "<b>/reset</b>", "Limpa partidas perdidas ou inacabadas", "@ExampleBot", "Go (Golang)", "@unopybot", "<b>Regras</b>", "Empilhamento", "Blefe do +4", "Trocar cartas"} {
 		if !strings.Contains(help, expected) {
 			t.Fatalf("help is missing %q: %s", expected, help)
 		}
+	}
+	if strings.Contains(strings.ToLower(help), "caseiro") {
+		t.Fatalf("help still mentions a single game mode by name: %s", help)
 	}
 }
 

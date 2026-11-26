@@ -79,7 +79,7 @@ var commandDescriptions = map[commandID]string{
 	cmdRanking: "Ver o ranking acumulado do grupo",
 	cmdStats:   "Ver suas estatísticas no grupo",
 	cmdConfig:  "Configurar o ranking do grupo",
-	cmdReset:   "Recuperar e limpar o grupo",
+	cmdReset:   "Limpa partidas perdidas ou inacabadas",
 	cmdHelp:    "Ver comandos e instruções",
 }
 
